@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Yangon Drive</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<meta name="theme-color" content="#111215" />
+<link rel="icon" href="/icons/icon-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* Type R / Mugen cockpit theme: matte charcoal, gunmetal panels, crimson accents, satin-silver metal, carbon twill, honeycomb mesh, red stitching */
+  :root{
+    --bg:#111215; --bg2:#18191E; --panel:#23242A; --edge:#34363F; --red:#D11A2A; --red-hi:#E60012; --silver:#C4C6CD; --txt:#E9EAEE; --dim:#9A9CA6;
+    --mm:"Noto Sans Myanmar","Myanmar Text","Padauk",system-ui,sans-serif;
+    --ui:"Rajdhani","Chakra Petch",var(--mm);
+    --mono:"Chakra Petch","Consolas",ui-monospace,monospace;
+    --carbon:linear-gradient(135deg,#0000 25%,#ffffff0b 25% 50%,#0000 50% 75%,#ffffff0b 75%) 0 0/6px 6px,linear-gradient(45deg,#0000 25%,#00000040 25% 50%,#0000 50% 75%,#00000040 75%) 0 0/6px 6px,#1a1b20;
+    --hex:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='24'><path d='M7 0l7 4v8l-7 4-7-4V4zM0 16l7 4v4M14 16l-7 4v4' fill='none' stroke='%2334363F' stroke-width='1'/></svg>");
+  }
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);font-family:var(--ui);color:var(--txt);touch-action:none;user-select:none;-webkit-user-select:none}
+  canvas{display:block;width:100%;height:100%}
+  .stitch{position:relative}
+  .stitch::after{content:"";position:absolute;inset:3px;border:1px dashed #d11a2a99;border-radius:inherit;pointer-events:none}
+  .lbl{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--dim);text-transform:uppercase}
+  html[lang=en] .lbl,html[lang=en] .eb span{letter-spacing:.12em}
+
+  /* ---------- instrument pod: machined bezel, recessed anti-glare display, shift lights ---------- */
+  #hud{position:fixed;top:12px;left:12px;pointer-events:none;width:158px;padding:7px;border-radius:14px;border:2px solid transparent;
+    background:linear-gradient(#202127,#121316) padding-box,linear-gradient(#8b8e99,#2d2f36 18%,#17181c 60%,#050506) border-box;
+    box-shadow:0 8px 20px #000c,0 1px 0 #000,inset 0 1px 0 #ffffff30,inset 0 -2px 4px #0008}
+  #hud::before{content:"";position:absolute;left:14px;right:14px;top:0;height:1px;background:linear-gradient(90deg,transparent,#fffa,transparent)}
+  #shift{display:flex;gap:3px;justify-content:center;padding:4px 5px;margin-bottom:6px;border-radius:7px;background:#050507;box-shadow:inset 0 2px 4px #000,0 1px 0 #ffffff1a}
+  #shift i{flex:1;height:7px;border-radius:2px;background:#1b1c21;box-shadow:inset 0 1px 1px #000,0 0 0 1px #0c0c0e;transition:background .06s,box-shadow .06s}
+  #shift i.g.on{background:#3ddc84;box-shadow:0 0 6px #3ddc84,inset 0 1px 0 #ffffff66}
+  #shift i.a.on{background:#ffb02e;box-shadow:0 0 6px #ffb02e,inset 0 1px 0 #ffffff66}
+  #shift i.r.on{background:#ff2a3a;box-shadow:0 0 7px #ff2a3a,inset 0 1px 0 #ffffff66}
+  #shift.flash i{background:#3a8bff;box-shadow:0 0 8px #3a8bff}
+  #screen{position:relative;padding:6px 9px 7px;border-radius:8px;background:radial-gradient(120% 90% at 30% 0%,#12151a,#050608);box-shadow:inset 0 2px 6px #000,inset 0 0 0 1px #000,0 1px 0 #ffffff22;overflow:hidden}
+  #screen::after{content:"";position:absolute;inset:0;background:linear-gradient(155deg,#ffffff1c 0%,#ffffff05 38%,transparent 40%);pointer-events:none}
+  #spdrow{display:flex;align-items:flex-end;justify-content:space-between}
+  #speed{font-family:var(--mono);font-size:42px;font-weight:700;line-height:1;color:#f4f6fa;text-shadow:0 0 10px #ffffff33;font-variant-numeric:tabular-nums}
+  #speed small{font-size:10px;font-weight:600;color:var(--silver);letter-spacing:.12em}
+  #gear{font-family:var(--mono);font-size:20px;font-weight:700;color:#ff3a4a;text-shadow:0 0 8px #e6001299;padding-bottom:3px}
+  #mode{margin-top:3px;font-family:var(--mono);font-size:9.5px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.1em}
+  #env{margin-top:2px;font-size:11px;color:var(--silver)}
+  #scorebox{margin-top:5px;padding-top:5px;border-top:1px solid #2a2b31;display:flex;align-items:baseline;justify-content:space-between;color:var(--dim);font-size:10.5px;text-transform:uppercase}
+  #score{font-family:var(--mono);font-size:22px;font-weight:700;color:#fff}
+  #help{position:fixed;left:12px;bottom:24px;max-width:min(760px,calc(100vw - 24px));padding:5px 10px;border-radius:8px;background:#111215b8;border:1px solid var(--edge);font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--dim)}
+  #credit{position:fixed;left:8px;bottom:2px;font-size:10px;color:#fff;opacity:.55;pointer-events:none}
+  #touch{display:none}
+  .touch #touch{display:block}
+  .touch #help{display:none}
+
+  /* ---------- tactile controls: bevelled metal bezel, domed cap, etched icons, LED ---------- */
+  .eb{width:60px;height:52px;border-radius:11px;border:2px solid transparent;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;pointer-events:auto;cursor:pointer;
+    background:linear-gradient(#30323a,#1a1b20 55%,#131417) padding-box,linear-gradient(#9a9da8,#3a3c44 20%,#16171a 65%,#050506) border-box;
+    box-shadow:0 1px 0 #000,0 5px 10px #000b,inset 0 1px 0 #ffffff2e,inset 0 -3px 5px #0009;color:var(--silver);font-family:var(--mono);font-size:8.5px;font-weight:600;text-transform:uppercase}
+  .eb::before{content:"";position:absolute;left:9px;right:9px;top:0;height:1px;background:linear-gradient(90deg,transparent,#ffffffcc,transparent)}
+  .eb::after{content:"";position:absolute;inset:2px 2px 45%;border-radius:8px 8px 40% 40%;background:linear-gradient(#ffffff14,transparent);pointer-events:none}
+  .eb i{position:absolute;top:5px;width:20px;height:3px;border-radius:2px;background:#0a0a0c;box-shadow:inset 0 1px 1px #000,0 1px 0 #ffffff26;transition:background .1s}
+  .eb.on i{background:var(--red-hi);box-shadow:0 0 9px var(--red-hi),0 0 2px #fff8 inset}
+  .eb:active{transform:translateY(2px);box-shadow:0 0 0 #000,0 1px 3px #000,inset 0 2px 5px #000c}
+  .eb svg{width:19px;height:19px;margin-top:6px;fill:none;stroke:#80848f;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 0 #ffffff2e) drop-shadow(0 -1px 0 #000d)}
+  .eb.on svg{stroke:#fff;filter:drop-shadow(0 0 4px #ff2a3a) drop-shadow(0 -1px 0 #0009)}
+  .eb.on{color:#fff}
+  .eb span{filter:drop-shadow(0 1px 0 #ffffff1c) drop-shadow(0 -1px 0 #000)}
+  #envbtns{position:fixed;right:12px;top:186px;display:flex;flex-direction:column;gap:8px;z-index:3}
+  .touch #envbtns{right:auto;left:14px;top:auto;bottom:128px;flex-direction:row}
+
+  .btn{position:fixed;border-radius:50%;border:3px solid transparent;
+    background:radial-gradient(circle at 35% 28%,#454751,#1a1b20 62%,#0e0e10) padding-box,linear-gradient(#d4d6dd,#6c6f7a 35%,#25262b 70%,#0a0a0c) border-box;
+    box-shadow:0 0 0 2px #050506,0 8px 16px #000c,inset 0 2px 1px #ffffff2a,inset 0 -4px 8px #000a;color:var(--txt);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+  .btn:active{transform:translateY(2px)}
+  #gas{right:20px;bottom:30px;width:88px;height:88px;background:radial-gradient(circle at 35% 28%,#f0414f,#a3111f 62%,#5c0710) padding-box,linear-gradient(#f2d0d3,#a8636a 35%,#3a1015 70%,#0a0a0c) border-box;color:#fff}
+  #brake{right:124px;bottom:30px;width:72px;height:72px}
+  #cam{right:16px;top:16px;width:56px;height:56px;pointer-events:auto}
+  #wheelzone{position:fixed;left:20px;bottom:30px;width:200px;height:90px;border-radius:45px;border:3px solid transparent;
+    background:var(--carbon) padding-box,linear-gradient(#d4d6dd,#6c6f7a 35%,#25262b 70%,#0a0a0c) border-box;box-shadow:0 0 0 2px #050506,0 8px 16px #000c,inset 0 3px 8px #000}
+  #knob{position:absolute;top:10px;left:75px;width:50px;height:70px;border-radius:25px;background:linear-gradient(90deg,#8d9099,#e4e6ec 40%,#7a7d86);border:2px solid #0c0c0e;box-shadow:inset 0 0 0 3px #d11a2a66,0 4px 8px #000a}
+  .ind{right:16px;width:44px;height:44px;font-size:18px;pointer-events:auto}
+  #indL{top:84px;right:68px} #indR{top:84px;right:16px}
+
+  /* ---------- mission card ---------- */
+  #lesson{position:fixed;top:12px;left:50%;transform:translateX(-50%);width:min(330px,calc(100vw - 440px));background:var(--carbon);color:var(--txt);border-radius:10px;border:1px solid var(--edge);border-left:4px solid var(--red);padding:6px 11px 9px;box-shadow:0 6px 16px #000a,inset 0 1px 0 #ffffff12;display:none;pointer-events:none;line-height:1.35;font-family:var(--ui);overflow:hidden}
+  #lesson::before{content:"";display:block;height:7px;margin:0 -11px 5px;background:var(--hex) 0 0/14px 24px;opacity:.8}
+  @media(max-width:900px){#lesson{left:12px;transform:none;width:min(330px,calc(100vw - 24px - 70px));top:210px}.touch #lesson{width:min(330px,calc(100vw - 24px));top:134px}}
+  #l-head{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--silver)}
+  #l-badge{background:var(--red);color:#fff;font-weight:700;padding:1px 8px;border-radius:3px;transform:skew(-10deg);white-space:nowrap;font-family:var(--mono);font-size:10px}
+  #l-title{flex:1;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;font-family:var(--mono);font-size:10px}
+  #l-count{font-family:var(--mono);font-weight:700;color:#fff}
+  #l-bar{height:4px;background:#0c0c0f;border:1px solid var(--edge);border-radius:2px;margin:6px 0 7px;overflow:hidden}
+  #l-fill{display:block;height:100%;width:0;background:linear-gradient(90deg,#8f0f1b,var(--red-hi));box-shadow:0 0 6px #e6001288;transition:width .4s}
+  #l-text{font-size:14px;font-weight:600}
+  #l-extra{font-family:var(--mono);font-size:12px;color:var(--silver);margin-top:3px;font-weight:700}
+  #toast{position:fixed;top:140px;left:50%;transform:translateX(-50%);background:#23080bee;color:#fff;border:1px solid var(--red);border-radius:8px;padding:5px 13px;opacity:0;transition:opacity .3s;pointer-events:none;text-align:center;font-size:13px;font-weight:600;max-width:90vw;box-shadow:0 4px 14px #000a}
+  #toast b{font-family:var(--mono);color:var(--red-hi);margin-right:4px}
+
+  /* ---------- dialogs ---------- */
+  #settings,#result{position:fixed;inset:0;background:#05060acc;display:none;align-items:center;justify-content:center;z-index:11;backdrop-filter:blur(2px)}
+  #result{z-index:10}
+  #s-card,#r-card{background:var(--carbon);color:var(--txt);border:1px solid var(--edge);border-top:3px solid var(--red);border-radius:14px;padding:18px 22px;box-shadow:0 14px 40px #000c,inset 0 1px 0 #ffffff12;text-align:center}
+  #s-card{min-width:min(300px,86vw);text-align:left}
+  #r-card{max-width:min(420px,90vw)}
+  #s-card h3,#r-card h2{margin:0 0 12px;font-size:18px;text-transform:uppercase;font-family:var(--ui);font-weight:700;color:#fff}
+  #r-card h2{font-size:20px}
+  .srow{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;color:var(--silver);text-transform:uppercase}
+  #s-lang{display:flex;gap:6px}
+  button{font-family:var(--ui);cursor:pointer}
+  #s-lang button,#s-close,#r-card button{padding:8px 14px;border:1px solid #454852;border-radius:8px;background:linear-gradient(#30323a,#1a1b20);color:var(--silver);font-size:14px;font-weight:600;text-transform:uppercase;box-shadow:0 3px 0 #050506,0 6px 10px #0008,inset 0 1px 0 #ffffff3a,inset 0 -2px 3px #0008}
+  #s-lang button.on,#r-next,#s-close{background:linear-gradient(var(--red-hi),var(--red));border-color:#ff6b78;color:#fff}
+  #s-close{margin-top:14px;width:100%}
+  #r-card button{margin:8px 5px 0}
+  #r-card #r-text p{color:var(--silver)}
+  #r-card #r-text b{font-family:var(--mono);color:#fff}
+
+  /* ===== premium pass: fine twill, chamfered metal, glass sheen, console tray ===== */
+  :root{--twill:repeating-linear-gradient(45deg,#ffffff07 0 1px,transparent 1px 3px),repeating-linear-gradient(-45deg,#00000055 0 1px,transparent 1px 3px),linear-gradient(#17181c,#0e0f12);
+    --glass:linear-gradient(105deg,transparent 0 38%,#ffffff12 38% 52%,transparent 52%)}
+  #hud,#lesson{background:var(--twill);border:1px solid #ffffff14;box-shadow:0 10px 24px #000c,inset 0 1px 0 #ffffff22,inset 0 0 0 1px #000,inset 0 -2px 6px #0009;letter-spacing:.1em}
+  #hud{border-radius:10px}
+  #lesson{border-left:1px solid #ffffff14;border-radius:10px}
+  #lesson::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(var(--red-hi),var(--red));box-shadow:0 0 8px #e6001288}
+  #hud::before{display:none}
+  #hud::after,#lesson::after{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--glass);pointer-events:none}
+  #speed,#gear,#mode,#score,#l-badge,#l-title,#l-count,#l-extra,.eb span{letter-spacing:.1em;font-family:"Rajdhani","Chakra Petch",ui-monospace,monospace}
+  #speed{font-size:46px;font-weight:700}
+  #screen{box-shadow:inset 0 2px 8px #000,inset 0 0 0 1px #000,0 1px 0 #ffffff1c}
+  /* recessed console tray */
+  #envbtns{padding:9px 8px;gap:7px;border-radius:14px;background:#0d0e11;border:1px solid #ffffff10;
+    box-shadow:inset 0 4px 12px #000,inset 0 -1px 0 #ffffff12,0 1px 0 #ffffff1a,0 10px 22px #000b}
+  .touch #envbtns{padding:7px 9px}
+  .eb{width:56px;height:50px;border:1px solid #000;border-radius:7px;
+    background:repeating-linear-gradient(90deg,#ffffff06 0 1px,transparent 1px 3px),linear-gradient(180deg,#2b2d35 0%,#1c1d22 100%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 -2px 0 rgba(0,0,0,.6),0 4px 10px rgba(0,0,0,.8),0 0 0 1px #ffffff0d}
+  .eb::before{display:none}
+  .eb::after{inset:0;border-radius:6px;background:linear-gradient(180deg,#ffffff10,transparent 45%,#0000002a)}
+  .eb:active{transform:translateY(2px);box-shadow:inset 0 2px 5px #000c,inset 0 -1px 0 #ffffff10,0 1px 2px #000}
+  /* LED jewel */
+  .eb i{top:5px;right:5px;left:auto;width:6px;height:6px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#4a4c55,#15161a);box-shadow:inset 0 1px 1px #000,0 0 0 1px #000,0 1px 0 #ffffff1f}
+  .eb.on i{background:radial-gradient(circle at 35% 30%,#fff,#ff6a78 35%,#e60012);box-shadow:0 0 8px #ff3344,0 0 0 1px #000}
+  .eb svg{margin-top:8px;width:18px;height:18px}
+  .eb.on svg{stroke:#e9eaee;filter:drop-shadow(0 0 3px #ff334488) drop-shadow(0 -1px 0 #0009)}
+  /* console trim plate for the key legend */
+  #help{left:50%;transform:translateX(-50%);bottom:10px;border-radius:7px;background:var(--twill);border:1px solid #ffffff14;
+    box-shadow:0 6px 16px #000b,inset 0 1px 0 #ffffff1c,inset 0 -2px 4px #0009;padding:5px 16px;letter-spacing:.1em;font-family:"Rajdhani","Chakra Petch",monospace;font-weight:600;text-align:center;color:#aeb0ba}
+  #help::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;border-radius:7px 7px 0 0;background:linear-gradient(90deg,transparent,var(--red) 20%,var(--red) 80%,transparent);opacity:.8}
+  #help{position:fixed}
+  #credit{display:none}
+
+  #hud{display:none}
+  #s-env{display:flex;gap:8px}
+  #s-env .eb{position:relative;pointer-events:auto}
+  #s-keys{margin:4px 0 14px;padding:8px 10px;border-radius:8px;background:#0d0e11;box-shadow:inset 0 2px 6px #000;font-family:"Rajdhani","Chakra Petch",monospace;font-size:12px;line-height:1.6;letter-spacing:.08em;color:#aeb0ba;text-align:left;max-width:340px}
+  /* lesson card in the lower third so the road stays visible */
+  #lesson{top:auto!important;bottom:18px;left:50%;transform:translateX(-50%)!important;width:min(460px,calc(100vw - 24px))}
+  .touch #lesson{bottom:134px;width:min(420px,calc(100vw - 24px))}
+  #toast{top:auto;bottom:130px}
+</style>
+</head>
+<body>
+<div id="hud"><div id="shift"></div><div id="screen"><div id="spdrow"><div id="speed">0 <small>km/h</small></div><div id="gear">D1</div></div><div id="mode"></div><div id="env"></div>
+<div id="scorebox"><span data-en="Score" data-my="ရမှတ်">Score</span><span id="score">100</span></div></div></div>
+<div id="credit">© OpenStreetMap contributors</div>
+<div id="envbtns">
+  <div class="eb" id="bLights" title="Headlights (H)"><i></i><svg viewBox="0 0 24 24"><path d="M10 6c-4 0-7 3-7 6s3 6 7 6c1.2 0 2-.5 2-2V8c0-1.3-.8-2-2-2z"/><path d="M15 8h6M15 12h6M15 16h6"/></svg><span data-en="Lights" data-my="မီး">Lights</span></div>
+  <div class="eb" id="bWipers" title="Wipers (V)"><i></i><svg viewBox="0 0 24 24"><path d="M3 18a11 11 0 0 1 18 0"/><path d="M12 18L7 8"/></svg><span data-en="Wipers" data-my="သုတ်">Wipers</span></div>
+  <div class="eb" id="bSettings" title="Settings (Esc)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></div>
+</div>
+<div id="lesson"><div id="l-head"><span id="l-badge"></span><span id="l-title"></span><span id="l-count"></span></div><div id="l-bar"><i id="l-fill"></i></div><div id="l-text"></div><div id="l-extra"></div></div>
+<div id="toast"></div>
+<div id="settings"><div id="s-card" class="stitch"><h3 data-en="Settings" data-my="ဆက်တင်">Settings</h3><div class="srow"><span data-en="Language" data-my="ဘာသာစကား">Language</span><div id="s-lang"><button data-l="en">English</button><button data-l="my">မြန်မာ</button></div></div><div class="srow"><span data-en="Weather" data-my="ရာသီဥတု">Weather</span><div id="s-env"><div class="eb" id="bNight" title="Night (N)"><i></i><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span data-en="Night" data-my="ည">Night</span></div><div class="eb" id="bRain" title="Rain (R)"><i></i><svg viewBox="0 0 24 24"><path d="M7 14a4 4 0 1 1 .8-7.9A5 5 0 0 1 17.5 8 3.5 3.5 0 0 1 17 15H7z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/></svg><span data-en="Rain" data-my="မိုး">Rain</span></div></div></div><div id="s-keys" data-en="W drive · S brake/reverse · A/D steer · Z/X indicators · N night · R rain · H headlights · V wipers · C camera · M map zoom · Q/E or drag to look" data-my="W မောင်း · S ဘရိတ်/နောက်ပြန် · A/D စတီယာရင် · Z/X မီးပြ · N ည · R မိုး · H ရှေ့မီး · V မိုးရေသုတ် · C ကင်မရာ · M မြေပုံ · Q/E ကြည့်ရန်"></div><button id="s-close" data-en="Close" data-my="ပိတ်မည်">Close</button></div></div>
+<div id="result"><div id="r-card" class="stitch"><div id="r-text"></div><button id="r-next" style="display:none" data-en="Next lesson" data-my="နောက်သင်ခန်းစာ">Next lesson</button><button id="r-retry" data-en="Retry" data-my="ထပ်လုပ်မည်">Retry</button><button id="r-free" data-en="Free drive" data-my="လွတ်လပ်စွာမောင်း">Free drive</button></div></div>
+<div id="touch">
+  <div id="indL" class="btn ind">◀</div><div id="indR" class="btn ind">▶</div>
+  <div id="wheelzone"><div id="knob"></div></div>
+  <div id="brake" class="btn">Brake</div>
+  <div id="gas" class="btn">Gas</div>
+  <div id="cam" class="btn">Cam</div>
+</div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

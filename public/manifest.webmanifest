@@ -1,0 +1,15 @@
+{
+  "name": "Yangon Drive",
+  "short_name": "Yangon Drive",
+  "description": "Learn to drive in Yangon",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#9ad1f0",
+  "theme_color": "#1b56a5",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

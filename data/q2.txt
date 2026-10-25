@@ -1,0 +1,7 @@
+[out:json][timeout:60];
+(
+node["highway"="traffic_signals"](16.766,96.148,16.782,96.168);
+node["highway"="stop"](16.766,96.148,16.782,96.168);
+node["highway"="crossing"](16.766,96.148,16.782,96.168);
+);
+out;
