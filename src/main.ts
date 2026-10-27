@@ -197,6 +197,12 @@ function toggleView() {
 toggleView(); toggleView();
 
 if (coarse) document.body.classList.add('touch');
+if (coarse) {
+  // the browser must not treat quick taps on Drive, Brake or the arrows as double-tap zoom, nor pinch or long-press the page
+  let lastTouchEnd = 0;
+  addEventListener('touchend', (e) => { const n = Date.now(); if (n - lastTouchEnd < 400) e.preventDefault(); lastTouchEnd = n; }, { passive: false });
+  for (const ev of ['gesturestart', 'gesturechange', 'gestureend', 'dblclick', 'contextmenu', 'selectstart']) addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+}
 // phones: ask for fullscreen and a landscape lock on the first touch (Android honours it; iOS cannot, so the CSS rotate prompt covers portrait)
 if (document.body.classList.contains('touch')) {
   const lockLandscape = () => { const o = screen.orientation as ScreenOrientation & { lock?: (t: string) => Promise<void> }; o?.lock?.('landscape').catch(() => {}); };

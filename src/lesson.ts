@@ -26,7 +26,7 @@ const LESSONS: { title: { en: string; my: string }; steps: Step[] }[] = [
   {
     title: { en: 'Basics and traffic lights', my: 'အခြေခံနှင့် မီးပွိုင့်' },
     steps: [
-      { en: 'Press Gas (W) gently and pull away. Reach 20 km/h.', my: 'Gas (W) ကို ဖြည်းဖြည်းနှင်းပြီး ကားကို စတင်မောင်းပါ။ ၂၀ km/h အထိ မြှင့်ပါ။', done: (s) => s.kmh >= 20 },
+      { en: 'Press Drive (W) gently and pull away. Reach 20 km/h.', my: 'Drive (W) ကို ဖြည်းဖြည်းနှင်းပြီး ကားကို စတင်မောင်းပါ။ ၂၀ km/h အထိ မြှင့်ပါ။', done: (s) => s.kmh >= 20 },
       { en: 'Hold 20–40 km/h for 6 seconds. Stay under the limit.', my: '၂၀–၄၀ km/h ကြား ၆ စက္ကန့် ထိန်းမောင်းပါ။ အမြန်နှုန်းကန့်သတ်ချက်ကို မကျော်ပါနှင့်။', done: (s, c) => (s.kmh >= 20 && s.kmh <= SPEED_LIMIT ? (c.hold += s.dt) : (c.hold = 0), c.hold >= 6) },
       { en: 'Switch on an indicator: Z for left, X for right.', my: 'မီးပြ ဖွင့်ပါ — ဘယ်ဘက် Z၊ ညာဘက် X။', done: (s) => s.indicator },
       { en: 'Drive on to the traffic lights ahead. Obey the light, and stop behind the white line if it is red.', my: 'ရှေ့က မီးပွိုင့်သို့ ဆက်မောင်းပါ။ မီးနီဆိုလျှင် အဖြူရောင်မျဉ်းအနောက်တွင် ရပ်ပါ။', done: (s) => s.crossedLegally },

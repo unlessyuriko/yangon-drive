@@ -167,6 +167,8 @@
   #rotate{display:none;position:fixed;inset:0;z-index:100;background:#0b0c0f;color:#e8eaf0;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px;font-family:"Rajdhani","Chakra Petch",ui-sans-serif,sans-serif;font-size:20px;font-weight:600;letter-spacing:.06em}
   #rotate svg{width:84px;height:84px;fill:none;stroke:#e8eaf0;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;animation:rot 2.4s ease-in-out infinite}
   @keyframes rot{0%,20%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
+  /* no browser double-tap zoom, pinch zoom, long-press menu or tap flash on any control */
+  *{touch-action:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
   .steer{display:none;width:84px;height:84px;bottom:30px;font-size:30px;pointer-events:auto;touch-action:none}
   #steerL{left:20px} #steerR{left:118px}
   .touch.steer-arrows .steer{display:flex}
@@ -194,7 +196,7 @@
   <div id="indL" class="btn ind">◀</div><div id="indR" class="btn ind">▶</div>
   <div id="wheelzone"><div id="knob"></div></div>
   <div id="brake" class="btn">Brake</div>
-  <div id="gas" class="btn">Gas</div>
+  <div id="gas" class="btn">Drive</div>
   <div id="cam" class="btn">Cam</div>
   <div id="steerL" class="btn steer">◀</div><div id="steerR" class="btn steer">▶</div>
 </div>
