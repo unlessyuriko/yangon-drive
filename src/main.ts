@@ -196,6 +196,11 @@ function toggleView() {
 toggleView(); toggleView();
 
 if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
+// phones: ask for fullscreen and a landscape lock on the first touch (Android honours it; iOS cannot, so the CSS rotate prompt covers portrait)
+if (document.body.classList.contains('touch')) {
+  const lockLandscape = () => { const o = screen.orientation as ScreenOrientation & { lock?: (t: string) => Promise<void> }; o?.lock?.('landscape').catch(() => {}); };
+  addEventListener('pointerdown', () => { if (!document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().then(lockLandscape).catch(lockLandscape); else lockLandscape(); }, { once: true });
+}
 const $ = (id: string) => document.getElementById(id)!;
 const hold = (el: HTMLElement, on: (v: boolean) => void) => {
   el.addEventListener('pointerdown', (e) => { el.setPointerCapture(e.pointerId); on(true); });

@@ -158,11 +158,22 @@
   #lesson{top:auto!important;bottom:18px;left:50%;transform:translateX(-50%)!important;width:min(460px,calc(100vw - 24px))}
   .touch #lesson{bottom:134px;width:min(420px,calc(100vw - 24px))}
   #toast{top:auto;bottom:130px}
+  /* phones: camera button top-left (the map dial covers the top-right corner); portrait shows a rotate prompt, the game is landscape-only */
+  .touch #cam{left:14px;right:auto;top:14px;bottom:auto;width:60px;height:60px;z-index:5}
+  .touch #indL,.touch #indR{top:auto;bottom:128px}
+  .touch #indL{right:68px}
+  .touch #lesson{top:12px!important;bottom:auto!important;left:84px;transform:none!important;width:calc(100vw - 84px - 206px)}
+  .touch #toast{bottom:auto;top:96px}
+  #rotate{display:none;position:fixed;inset:0;z-index:100;background:#0b0c0f;color:#e8eaf0;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px;font-family:"Rajdhani","Chakra Petch",ui-sans-serif,sans-serif;font-size:20px;font-weight:600;letter-spacing:.06em}
+  #rotate svg{width:84px;height:84px;fill:none;stroke:#e8eaf0;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;animation:rot 2.4s ease-in-out infinite}
+  @keyframes rot{0%,20%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
+  @media (orientation:portrait){.touch #rotate{display:flex}}
 </style>
 </head>
 <body>
 <div id="hud"><div id="shift"></div><div id="screen"><div id="spdrow"><div id="speed">0 <small>km/h</small></div><div id="gear">D1</div></div><div id="mode"></div><div id="env"></div>
 <div id="scorebox"><span data-en="Score" data-my="ရမှတ်">Score</span><span id="score">100</span></div></div></div>
+<div id="rotate"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/></svg><div data-en="Turn your phone sideways to drive" data-my="မောင်းရန် ဖုန်းကို ဘေးတိုက်လှည့်ပါ">Turn your phone sideways to drive</div></div>
 <div id="credit">© OpenStreetMap contributors · Building heights: 3D-GloBFP, Che et al. 2024 (CC BY 4.0)</div>
 <div id="envbtns">
   <div class="eb" id="bLights" title="Headlights (H)"><i></i><svg viewBox="0 0 24 24"><path d="M10 6c-4 0-7 3-7 6s3 6 7 6c1.2 0 2-.5 2-2V8c0-1.3-.8-2-2-2z"/><path d="M15 8h6M15 12h6M15 16h6"/></svg><span data-en="Lights" data-my="မီး">Lights</span></div>
