@@ -5,7 +5,8 @@ import { Vehicle } from "./vehicle/CarPhysics";
 import { Signals, Approach, lightState } from "./signals";
 import { Lesson } from "./lesson";
 import { Crossings } from "./crossings";
-import { Traffic } from "./traffic";
+import { Traffic, Agent } from "./traffic";
+import type { OvertakeSite } from "./world/Overtake";
 import { Roundabout } from "./roundabout";
 import { buildCockpit, EYE } from "./cockpit";
 import { buildCarModel } from "./vehicle/CarVisuals";
@@ -66,16 +67,43 @@ let cityBuildings: { setNight(n: number): void } | null = null;
 let signals: Signals | null = null, crossings: Crossings | null = null, lesson: Lesson | null = null;
 let lessonApp: Approach | null = null, lessonCross: ReturnType<Crossings['pickLesson']> = null;
 let crossedFlag = false, freeDrive = false;
+// lesson 5 scene: a stopped bus on a straight road and oncoming taxis
+let ovSite: OvertakeSite | null = null, ovAgents: { bus: Agent; taxis: Agent[] } | null = null;
+let ovT = 0, ovNext = [5, 25], ovLeft = false, ovSignalled = false;
+const OV_BUS_S = 78, OV_BUS_HALF = 5.5;
+const ovLane = () => ovSite!.w / 4;
+function ovClear() { if (ovAgents) { traffic?.releaseScripted(); ovAgents = null; } }
+function stepOvertake(dt: number) {
+  if (!ovSite || !ovAgents) return;
+  const S = ovSite, rx = -S.fz, rz = S.fx;
+  ovT += dt;
+  const b = ovAgents.bus; b.active = true; b.v = 0; b.h = Math.atan2(S.fx, S.fz);
+  const bl = S.w / 2 - 1.6; b.x = S.x + S.fx * OV_BUS_S + rx * bl; b.z = S.z + S.fz * OV_BUS_S + rz * bl;
+  ovAgents.taxis.forEach((a, i) => {
+    a.h = Math.atan2(-S.fx, -S.fz);
+    if (!a.active) { if (ovT > ovNext[i]) { a.active = true; a.v = 9; a.x = S.x + S.fx * (S.len - 8) - rx * ovLane(); a.z = S.z + S.fz * (S.len - 8) - rz * ovLane(); } return; }
+    a.v = 9; a.x -= S.fx * 9 * dt; a.z -= S.fz * 9 * dt;
+    if ((a.x - S.x) * S.fx + (a.z - S.z) * S.fz < -40) { a.active = false; a.x = a.z = 1e5; ovNext[i] = ovT + 38; }
+  });
+}
 const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 14, 8), new THREE.MeshBasicMaterial({ color: 0xffd23a, transparent: true, opacity: 0.35, depthWrite: false }));
 beam.visible = false; scene.add(beam);
 function spawnLesson(id = 1) {
-  freeDrive = false;
+  freeDrive = false; ovClear();
   veh.speed = 0; veh.rpm = 850; veh.gear = 1; veh.steerAngle = 0;
   crossedFlag = false;
   if (crossings) for (const k of crossings.list) { k.active = false; k.mesh.visible = false; }
   env.night = env.rain = id === 4; env.headlights = env.wipers = false; refreshEnv();
   prevYield = undefined; yieldCrossed = false; exitChecked = false; exitReached = false;
-  if (id === 3 && roundabout?.ok && roundabout.spawn) {
+  if (id === 5 && ovSite && traffic) {
+    const S = ovSite;
+    ovAgents = traffic.claimScripted(); ovT = 0; ovNext = [5, 25]; ovLeft = false; ovSignalled = false;
+    ovAgents.taxis.forEach((a) => { a.active = false; a.x = a.z = 1e5; });
+    car.position.set(S.x + S.fx * 8 - S.fz * ovLane(), 0, S.z + S.fz * 8 + S.fx * ovLane());
+    car.rotation.y = Math.atan2(-S.fx, -S.fz);
+    beam.position.set(S.x + S.fx * OV_BUS_S - S.fz * (S.w / 2 - 1.6), 9, S.z + S.fz * OV_BUS_S + S.fx * (S.w / 2 - 1.6));
+    stepOvertake(0);
+  } else if (id === 3 && roundabout?.ok && roundabout.spawn) {
     const a = roundabout.spawn;
     car.position.set(a.x, 0, a.z); car.rotation.y = a.heading;
     beam.position.set(roundabout.yieldLine!.x, 7, roundabout.yieldLine!.z);
@@ -96,10 +124,10 @@ const minimap = new Minimap();
 loadCity(scene).then((c) => {
   minimap.build(c.roads, [{ x: c.roundabout.cx, z: c.roundabout.cz, label: 'Sule Pagoda' }]);
   env.roadMat = c.roadMaterial; env.buildLamps(c.roads);
-  cityBuildings = c.buildings; signals = c.signals; crossings = c.crossings; traffic = c.traffic; roundabout = c.roundabout;
+  ovSite = c.overtake; cityBuildings = c.buildings; signals = c.signals; crossings = c.crossings; traffic = c.traffic; roundabout = c.roundabout;
   lessonApp = signals.pickLessonApproach();
   lessonCross = crossings.pickLesson();
-  lesson = new Lesson(spawnLesson, () => { beam.visible = false; freeDrive = true; });
+  lesson = new Lesson(spawnLesson, () => { beam.visible = false; freeDrive = true; ovClear(); });
   if (lessonApp) spawnLesson(1); else { car.position.set(c.start.x, 0, c.start.z); car.rotation.y = c.start.heading; }
 });
 
@@ -230,6 +258,7 @@ function step(dt: number) {
       if (tx || tz) { car.position.x += tx; car.position.z += tz; hit = true; }
     }
   }
+  if (lesson?.id === 5 && !freeDrive) stepOvertake(dt);
   traffic?.update(dt, clock, car.position.x, car.position.z, car.rotation.y, veh.speed);
   // tyre smoke: hard braking from speed, or sliding sideways
   smokeT -= dt;
@@ -286,6 +315,22 @@ function step(dt: number) {
   noLightsCool -= dt;
   let noLightsNow = false;
   if (lesson?.id === 4 && env.nightT > 0.7 && !env.headlights && lesson.step >= 1 && Math.abs(veh.speed) > 2 && noLightsCool <= 0) { noLightsNow = true; noLightsCool = 10; }
+  const ov = { st: { busDist: 99, oncoming: 999, passedBus: false, backInLane: false }, unsafe: false, noSig: false };
+  if (lid === 5 && ovSite && ovAgents && lesson && !freeDrive && !lesson.finished) {
+    const S = ovSite, rx = -S.fz, rz = S.fx;
+    const s = (front.x - S.x) * S.fx + (front.z - S.z) * S.fz, lat = (front.x - S.x) * rx + (front.z - S.z) * rz;
+    const rear = OV_BUS_S - OV_BUS_HALF, off = lat < ovLane() - 1.3;
+    let near = 999;
+    for (const a of ovAgents.taxis) if (a.active) { const as = (a.x - S.x) * S.fx + (a.z - S.z) * S.fz; if (as > s - 6) near = Math.min(near, as - s); }
+    ov.st = { busDist: rear - s, oncoming: near, passedBus: s > OV_BUS_S + OV_BUS_HALF + 5, backInLane: Math.abs(lat - ovLane()) < 1.3 };
+    if (off && !ovLeft && s < OV_BUS_S + OV_BUS_HALF) {
+      ovLeft = true;
+      if (near < 60 && near > -6) ov.unsafe = true;
+      if (!indL) ov.noSig = true;
+    }
+    if (!off && s > OV_BUS_S + 20) ovLeft = false;
+    beam.visible = !ov.st.passedBus;
+  }
   if (lesson && signals && !freeDrive) {
     let dist = 0, light: 'red' | 'yellow' | 'green' = 'green', passed = false, ped = false;
     if (lid === 3) { dist = rbDist; }
@@ -297,8 +342,8 @@ function step(dt: number) {
       ped = crossings.pedOnRoad(lessonCross);
       passed = dist < -3 && !ped;
     }
-    lesson.update({ kmh: Math.abs(veh.speed) * 3.6, speed: veh.speed, t: clock, dt, indicator: indL || indR, distToLine: dist, lightAhead: light, crossedLegally: crossedFlag, stoppedAtRed: false, pedOnRoad: ped, passedCrossing: passed, crossedYield: yieldCrossed, reachedExit: exitReached, lightsOn: env.headlights, wipersOn: env.wipers, limit: lid === 4 ? 30 : 40 },
-      { redRun, crash, giveWay, hitPed, giveWayRound, noExitSignal, noLights: noLightsNow });
+    lesson.update({ kmh: Math.abs(veh.speed) * 3.6, speed: veh.speed, t: clock, dt, indicator: indL || indR, distToLine: dist, lightAhead: light, crossedLegally: crossedFlag, stoppedAtRed: false, pedOnRoad: ped, passedCrossing: passed, crossedYield: yieldCrossed, reachedExit: exitReached, lightsOn: env.headlights, wipersOn: env.wipers, limit: lid === 4 ? 30 : 40, ...ov.st },
+      { redRun, crash, giveWay, hitPed, giveWayRound, noExitSignal, noLights: noLightsNow, unsafePass: ov.unsafe, noPassSignal: ov.noSig });
     if (lesson.finished) beam.visible = false;
   }
 }

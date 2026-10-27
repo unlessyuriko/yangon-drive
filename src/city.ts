@@ -9,13 +9,14 @@ import { Signals } from "./signals";
 import { Crossings } from "./crossings";
 import { Traffic } from "./traffic";
 import { Roundabout } from "./roundabout";
+import { pickOvertake, OvertakeSite } from "./world/Overtake";
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 interface Road { w: number; pts: number[]; name: string; en: string; my: string; hw: string; ow: number; br: number }
 interface Bld { h: number; pts: number[] }
 interface MapData { roads: Road[]; buildings: Bld[] }
 
-export interface City { start: { x: number; z: number; heading: number }; signals: Signals; crossings: Crossings; traffic: Traffic; roundabout: Roundabout; roadMaterial: THREE.MeshStandardMaterial; roads: Road[]; buildings: BuildingSet }
+export interface City { start: { x: number; z: number; heading: number }; signals: Signals; crossings: Crossings; traffic: Traffic; roundabout: Roundabout; roadMaterial: THREE.MeshStandardMaterial; roads: Road[]; buildings: BuildingSet; overtake: OvertakeSite | null }
 
 const PALETTE = [0xe8d8b8, 0xd9a5a0, 0xb8cfe0, 0xe6e0d0, 0xc9d6b0, 0xf0c987, 0xcdb4db, 0xa9cdb5];
 
@@ -190,5 +191,5 @@ export async function loadCity(scene: THREE.Scene): Promise<City> {
   const phone = matchMedia("(pointer: coarse)").matches;
   const traffic = new Traffic(data.roads, signals, crossings, phone ? 14 : 26, phone ? 3 : 6, phone ? 3 : 6);
   scene.add(traffic.group);
-  return { start: best ?? { x: 0, z: 60, heading: 0 }, signals, crossings, traffic, roundabout, roadMaterial, roads: data.roads, buildings: buildingSet };
+  return { start: best ?? { x: 0, z: 60, heading: 0 }, signals, crossings, traffic, roundabout, roadMaterial, roads: data.roads, buildings: buildingSet, overtake: pickOvertake(data.roads, [...centres, ...cpts, [roundabout.cx, roundabout.cz]]) };
 }

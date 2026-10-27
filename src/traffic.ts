@@ -6,9 +6,9 @@ import { Taxi } from './vehicle/Taxi';
 
 interface Road { w: number; pts: number[]; ow: number; hw: string }
 interface Edge { a: number; b: number; ax: number; az: number; dx: number; dz: number; len: number; w: number; ow: boolean; bus: boolean }
-interface Agent {
+export interface Agent {
   bus: boolean; e: number; next: number; x: number; z: number; h: number; v: number; cruise: number;
-  slot: number; len: number; active: boolean; stuck: number; taxi?: boolean;
+  slot: number; len: number; active: boolean; stuck: number; taxi?: boolean; script?: boolean;
 }
 
 const DRIVABLE = ['primary', 'secondary', 'tertiary', 'trunk', 'residential', 'unclassified'];
@@ -18,6 +18,8 @@ const CAR_COLORS = [0xf4f4f4, 0xc9ccd1, 0x2b2f36, 0xb32424, 0x2c5faa, 0xf2c230, 
 export class Traffic {
   group = new THREE.Group();
   agents: Agent[] = [];
+  /** lesson 5 stages its own traffic: ordinary AI is switched off */
+  suspend = false;
   private edges: Edge[] = [];
   private out: number[][] = [];
   private carBody: THREE.InstancedMesh; private carCabin: THREE.InstancedMesh;
@@ -110,10 +112,24 @@ export class Traffic {
     return false;
   }
 
+  /** take over one bus and two taxis for a scripted scene; the caller moves them */
+  claimScripted(): { bus: Agent; taxis: Agent[] } {
+    const bus = this.agents.find((a) => a.bus)!, taxis = this.agents.filter((a) => a.taxi).slice(0, 2);
+    for (const a of [bus, ...taxis]) { a.script = true; a.active = false; a.v = 0; }
+    this.suspend = true;
+    return { bus, taxis };
+  }
+  releaseScripted() {
+    for (const a of this.agents) if (a.script) { a.script = false; a.active = false; }
+    this.suspend = false;
+  }
+
   /** player: position, heading (rad, forward = (-sin h, -cos h)) and speed. */
   update(dt: number, t: number, px: number, pz: number, ph: number, pv: number) {
     const pfx = -Math.sin(ph), pfz = -Math.cos(ph);
     for (const a of this.agents) {
+      if (a.script) continue;
+      if (this.suspend) { a.active = false; continue; }
       if (!a.active) { this.place(a, px, pz, 70, 260); continue; }
       const e = this.edges[a.e];
       let s = (a.x - e.ax) * e.dx + (a.z - e.az) * e.dz;

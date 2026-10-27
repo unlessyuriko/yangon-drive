@@ -10,6 +10,9 @@ export interface DriveState {
   crossedYield: boolean;    // lesson 3: crossed the give-way line
   reachedExit: boolean;     // lesson 3: reached the target exit arm
   lightsOn: boolean; wipersOn: boolean; limit: number;
+  busDist: number;          // lesson 5: metres from the car front to the tail of the stopped bus
+  oncoming: number;         // lesson 5: metres to the nearest oncoming vehicle ahead (999 = none)
+  passedBus: boolean; backInLane: boolean;
 }
 
 interface Step { en: string; my: string; done(s: DriveState, ctx: Ctx): boolean }
@@ -51,6 +54,15 @@ const LESSONS: { title: { en: string; my: string }; steps: Step[] }[] = [
       { en: 'It is dark and raining. Turn on your headlights (H).', my: 'မှောင်ပြီး မိုးရွာနေသည်။ ရှေ့မီး (H) ဖွင့်ပါ။', done: (s) => s.lightsOn },
       { en: 'Turn on the wipers (V).', my: 'မိုးရေသုတ်တံ (V) ဖွင့်ပါ။', done: (s) => s.wipersOn },
       { en: 'Drive on to the traffic lights. Stay under 30 km/h and brake early, the road is slippery. Stop at the line if it is red.', my: 'မီးပွိုင့်သို့ ဆက်မောင်းပါ။ ၃၀ km/h အောက်ထားပြီး စောစောဘရိတ်အုပ်ပါ၊ လမ်းချော်သည်။ မီးနီဆိုလျှင် မျဉ်းအနောက်တွင် ရပ်ပါ။', done: (s) => s.crossedLegally },
+    ],
+  },
+  {
+    title: { en: 'Overtaking a stopped bus', my: 'ရပ်ထားသော ဘတ်စ်ကားကို ကျော်တက်ခြင်း' },
+    steps: [
+      { en: 'A YBS bus is stopped ahead. Ease off and slow below 20 km/h as you come up behind it.', my: 'ရှေ့တွင် YBS ဘတ်စ်ကား ရပ်နေသည်။ နောက်မှ ချဉ်းကပ်လာလျှင် ၂၀ km/h အောက် နှေးပါ။', done: (s) => s.busDist < 30 && s.busDist > 2 && s.kmh < 20 },
+      { en: 'Look for oncoming traffic (Q / E). You will pull out to the LEFT, so signal left (Z).', my: 'ဆန့်ကျင်ဘက်မှ လာသော ယာဉ်ကို ကြည့်ပါ (Q / E)။ ဘယ်ဘက်သို့ ထွက်ကျော်ရမည် — ဘယ်မီးပြ (Z) ဖွင့်ပါ။', done: (s) => s.indicator },
+      { en: 'Pull out only when the oncoming lane is clear, pass the bus with a wide gap, then keep going.', my: 'ဆန့်ကျင်ဘက်လမ်း လွတ်မှသာ ထွက်ပါ။ ဘတ်စ်ကားနှင့် အကွာအဝေးထား၍ ကျော်ပါ။', done: (s) => s.passedBus },
+      { en: 'Signal and move back into your own lane. Stay under 40 km/h.', my: 'မီးပြ၍ ကိုယ့်လမ်းသို့ ပြန်ဝင်ပါ။ ၄၀ km/h အောက်ထားပါ။', done: (s, c) => (s.passedBus && s.backInLane ? (c.hold += s.dt) : (c.hold = 0), c.hold >= 1.5) },
     ],
   },
 ];
@@ -117,13 +129,15 @@ export class Lesson {
     this.toastTimer = window.setTimeout(() => (this.el.toast.style.opacity = '0'), 3000);
   }
 
-  update(s: DriveState, events: { redRun: boolean; crash: boolean; giveWay: boolean; hitPed: boolean; giveWayRound?: boolean; noExitSignal?: boolean; noLights?: boolean }) {
+  update(s: DriveState, events: { redRun: boolean; crash: boolean; giveWay: boolean; hitPed: boolean; giveWayRound?: boolean; noExitSignal?: boolean; noLights?: boolean; unsafePass?: boolean; noPassSignal?: boolean }) {
     if (this.finished) return;
     if (events.redRun) this.fine('You ran a red light!', 'မီးနီကို ကျော်ဖြတ်မိသည်!', 20);
     if (events.giveWay) this.fine('You did not give way to a pedestrian.', 'လမ်းဖြတ်ကူးသူကို ဦးစားမပေးပါ။', 20);
     if (events.giveWayRound) this.fine('You did not give way on the roundabout.', 'အဝိုင်းထဲတွင် ဦးစားမပေးပါ။', 20);
     if (events.noExitSignal) this.fine('You did not signal before leaving the roundabout.', 'အဝိုင်းမှ မထွက်မီ မီးပြမဖွင့်ပါ။', 10);
     if (events.noLights) this.fine('Headlights off in the dark.', 'မှောင်ချိန်တွင် ရှေ့မီးမဖွင့်ပါ။', 10);
+    if (events.unsafePass) this.fine('You overtook with a car coming towards you!', 'ဆန့်ကျင်ဘက်မှ ကားလာနေစဉ် ကျော်တက်မိသည်!', 25);
+    if (events.noPassSignal) this.fine('You pulled out without signalling.', 'မီးမပြဘဲ ထွက်ကျော်မိသည်။', 10);
     if (events.hitPed) this.fine('You hit a pedestrian!', 'လမ်းဖြတ်ကူးသူကို တိုက်မိသည်!', 40);
     if (events.crash && s.t - this.lastCrash > 2.5) { this.lastCrash = s.t; this.fine('You crashed.', 'တိုက်မိသည်။', 10); }
     const lim = s.limit;
@@ -138,6 +152,7 @@ export class Lesson {
     let extra = '';
     const last = this.step === this.steps.length - 1;
     if ((this.id === 1 || this.id === 4) && last) extra = `${Math.max(0, Math.round(s.distToLine))} m  ${s.lightAhead === 'red' ? '🔴' : s.lightAhead === 'yellow' ? '🟡' : '🟢'}`;
+    else if (this.id === 5) extra = this.step === 0 ? `${Math.max(0, Math.round(s.busDist))} m` : s.oncoming < 120 && !s.passedBus ? `⚠ ${Math.round(s.oncoming)} m` : '';
     else if (this.id === 2 || this.id === 3) extra = `${Math.max(0, Math.round(s.distToLine))} m`;
     if (extra !== this.extra) { this.extra = extra; this.el.ext.textContent = extra; this.el.ext.style.display = extra ? 'block' : 'none'; }
   }
