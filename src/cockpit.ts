@@ -9,6 +9,8 @@ export interface Cockpit {
   group: THREE.Group;
   update(o: { kmh: number; rpm: number; gear: number; steerAngle: number; indicatorL: boolean; indicatorR: boolean; t: number; night?: number }): void;
   renderMirror(renderer: THREE.WebGLRenderer, scene: THREE.Scene, car: THREE.Object3D): void;
+  /** the car model brings its own interior: hide the drawn dash, seats and wheel and keep only the live instruments and the rear-view mirror, placed on the model's own parts */
+  adopt(o: { gauge: { pos: THREE.Vector3; rotX: number; size: number }; mirror: { pos: THREE.Vector3; rot: THREE.Euler; w: number; h: number } }): { tach: THREE.Mesh; digi: THREE.Mesh; mirror: THREE.Mesh };
 }
 
 export function buildCockpit(): Cockpit {
@@ -259,6 +261,15 @@ export function buildCockpit(): Cockpit {
       lastDraw = t;
       drawTach(rpm, gear, indicatorL, indicatorR, Math.floor(t * 2.5) % 2 === 0);
       drawDigi(kmh);
+    },
+    adopt({ gauge, mirror: mi }) {
+      const keep = new Set<THREE.Object3D>([tachMesh, digiMesh, mirror, dome]);
+      for (const c of g.children) if (!keep.has(c)) c.visible = false;
+      for (const m of [tachMesh, digiMesh]) { m.rotation.set(gauge.rotX, 0, 0); }
+      tachMesh.scale.setScalar(gauge.size / 0.2); tachMesh.position.copy(gauge.pos);
+      digiMesh.scale.setScalar(gauge.size / 0.3 * 0.75); digiMesh.position.copy(gauge.pos).add(new THREE.Vector3(0, -0.015, 0.08));
+      mirror.position.copy(mi.pos); mirror.rotation.copy(mi.rot); mirror.scale.set(-mi.w / 0.22, mi.h / 0.055, 1);
+      return { tach: tachMesh, digi: digiMesh, mirror };
     },
     renderMirror(renderer, scene, car) {
       if (!g.visible || (mirrorTick++ % (small ? 3 : 2))) return;

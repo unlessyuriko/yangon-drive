@@ -9,7 +9,8 @@ import { Traffic, Agent } from "./traffic";
 import type { OvertakeSite } from "./world/Overtake";
 import { Roundabout } from "./roundabout";
 import { buildCockpit, EYE } from "./cockpit";
-import { buildCarModel } from "./vehicle/CarVisuals";
+import { buildCarModel, CarModel } from "./vehicle/CarVisuals";
+import { loadMugenModel } from "./vehicle/MugenModel";
 import { makeCarEnv } from "./reflections";
 import { startSound, updateSound, thud, setRainSound } from "./sound";
 import { Environment, RainField, Windscreen } from "./environment";
@@ -58,7 +59,7 @@ scene.add(car);
 const envDay = makeCarEnv(renderer, false), envNight = makeCarEnv(renderer, true);
 scene.environment = envDay; scene.environmentIntensity = 0.55;
 let envIsNight = false;
-const carModel = buildCarModel(envDay);
+let carModel: CarModel = buildCarModel(envDay);   // procedural stand-in until the Mugen RR model has loaded
 car.add(carModel.group);
 let odo = 0;
 let traffic: Traffic | null = null, roundabout: Roundabout | null = null;
@@ -121,9 +122,12 @@ function spawnLesson(id = 1) {
   lesson?.reset(id);
 }
 const minimap = new Minimap();
+// one-way carriageway segments (ax, az, bx, bz, half-width) for the wrong-way check; traffic on a one-way road runs from the first point to the last
+const owSegs: number[][] = []; let wrongT = 0, wrongCool = 0, wrongNow = false, owCheck = 0;
 loadCity(scene).then((c) => {
   minimap.build(c.roads, [{ x: c.roundabout.cx, z: c.roundabout.cz, label: 'Sule Pagoda' }]);
   env.roadMat = c.roadMaterial; env.buildLamps(c.roads);
+  for (const r of c.roads) if (r.ow) for (let i = 0; i < r.pts.length / 2 - 1; i++) owSegs.push([r.pts[i * 2], r.pts[i * 2 + 1], r.pts[i * 2 + 2], r.pts[i * 2 + 3], r.w / 2]);
   ovSite = c.overtake; cityBuildings = c.buildings; signals = c.signals; crossings = c.crossings; traffic = c.traffic; roundabout = c.roundabout;
   lessonApp = signals.pickLessonApproach();
   lessonCross = crossings.pickLesson();
@@ -131,7 +135,15 @@ loadCity(scene).then((c) => {
   if (lessonApp) spawnLesson(1); else { car.position.set(c.start.x, 0, c.start.z); car.rotation.y = c.start.heading; }
 });
 
+let mugenLoaded = false;
 const shell = [carModel.group];
+loadMugenModel(envIsNight ? envNight : envDay).then((m) => {
+  car.remove(carModel.group); car.add(m.group); shell[0] = m.group; carModel = m; mugenLoaded = true;
+  // the model's own interior replaces the drawn cockpit: it stays visible in first person, only the live gauges and the rear-view mirror are added to it
+  const parts = cockpit.adopt({ gauge: { pos: new THREE.Vector3(0.38, 0.93, -0.6), rotX: -0.8, size: 0.2 }, mirror: { pos: new THREE.Vector3(0, 1.22, -0.455), rot: new THREE.Euler(0.1, 0, 0), w: 0.2, h: 0.06 } });
+  (window as unknown as { __cp: unknown }).__cp = parts;
+  m.group.visible = true;
+}).catch((e) => console.warn('Mugen RR model not loaded, keeping the procedural car', e));
 const cockpit = buildCockpit();
 car.add(cockpit.group);
 const veh = new Vehicle();
@@ -178,7 +190,7 @@ addEventListener('pointerdown', () => startSound());
 function toggleView() {
   view = view === 'first' ? 'third' : 'first';
   cockpit.group.visible = view === 'first';
-  shell.forEach((m) => (m.visible = view === 'third'));
+  shell.forEach((m) => (m.visible = view === 'third' || mugenLoaded));
   hud.setMode(view === 'first' ? 'First person' : 'Third person');
 }
 toggleView(); toggleView();
@@ -312,6 +324,19 @@ function step(dt: number) {
     beam.position.set(tgt.x, 7, (tgt as { z: number }).z);
     if (yieldCrossed) rbDist = Math.hypot(front.x - xt.x, front.z - xt.z);
   }
+  // driving against a one-way road: car on a one-way segment, heading the opposite way, moving, for 2 s
+  owCheck -= dt;
+  if (owCheck <= 0) {
+    owCheck = 0.2; let against = false;
+    const fx = -Math.sin(car.rotation.y), fz = -Math.cos(car.rotation.y);
+    if (veh.speed > 2.5) for (const g of owSegs) {
+      const ex = g[2] - g[0], ez = g[3] - g[1], L2 = ex * ex + ez * ez || 1, t = Math.max(0, Math.min(1, ((car.position.x - g[0]) * ex + (car.position.z - g[1]) * ez) / L2));
+      if (Math.hypot(g[0] + ex * t - car.position.x, g[1] + ez * t - car.position.z) < g[4] - 0.3 && (fx * ex + fz * ez) / Math.sqrt(L2) < -0.6) { against = true; break; }
+    }
+    wrongT = against ? wrongT + 0.2 : 0;
+  }
+  wrongCool -= dt; wrongNow = false;
+  if (wrongT > 2 && wrongCool <= 0) { wrongNow = true; wrongCool = 12; }
   noLightsCool -= dt;
   let noLightsNow = false;
   if (lesson?.id === 4 && env.nightT > 0.7 && !env.headlights && lesson.step >= 1 && Math.abs(veh.speed) > 2 && noLightsCool <= 0) { noLightsNow = true; noLightsCool = 10; }
@@ -343,7 +368,7 @@ function step(dt: number) {
       passed = dist < -3 && !ped;
     }
     lesson.update({ kmh: Math.abs(veh.speed) * 3.6, speed: veh.speed, t: clock, dt, indicator: indL || indR, distToLine: dist, lightAhead: light, crossedLegally: crossedFlag, stoppedAtRed: false, pedOnRoad: ped, passedCrossing: passed, crossedYield: yieldCrossed, reachedExit: exitReached, lightsOn: env.headlights, wipersOn: env.wipers, limit: lid === 4 ? 30 : 40, ...ov.st },
-      { redRun, crash, giveWay, hitPed, giveWayRound, noExitSignal, noLights: noLightsNow, unsafePass: ov.unsafe, noPassSignal: ov.noSig });
+      { redRun, crash, giveWay, hitPed, giveWayRound, noExitSignal, noLights: noLightsNow, unsafePass: ov.unsafe, noPassSignal: ov.noSig, wrongWay: wrongNow });
     if (lesson.finished) beam.visible = false;
   }
 }
@@ -450,7 +475,7 @@ function frame(now: number) {
     rainField.update(dt, camera.position, env.rainT);
     windscreen.update(dt, view === 'first', env.rainT, env.wipers, Math.abs(veh.speed));
   });
-  if (view === 'first' && useMirror) perf.time('mirror', () => cockpit.renderMirror(renderer, scene, car));
+  if (view === 'first' && useMirror) perf.time('mirror', () => { if (mugenLoaded) shell[0].visible = false; cockpit.renderMirror(renderer, scene, car); if (mugenLoaded) shell[0].visible = true; });
   perf.time('render', () => gr.render(dt, scene, camera, Math.min(1, Math.abs(veh.speed) / 38), veh.brakeIn > 0.7 ? Math.min(1, Math.abs(veh.speed) / 25) : 0));
   requestAnimationFrame(frame);
 }

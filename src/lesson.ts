@@ -129,7 +129,7 @@ export class Lesson {
     this.toastTimer = window.setTimeout(() => (this.el.toast.style.opacity = '0'), 3000);
   }
 
-  update(s: DriveState, events: { redRun: boolean; crash: boolean; giveWay: boolean; hitPed: boolean; giveWayRound?: boolean; noExitSignal?: boolean; noLights?: boolean; unsafePass?: boolean; noPassSignal?: boolean }) {
+  update(s: DriveState, events: { redRun: boolean; crash: boolean; giveWay: boolean; hitPed: boolean; giveWayRound?: boolean; noExitSignal?: boolean; noLights?: boolean; unsafePass?: boolean; noPassSignal?: boolean; wrongWay?: boolean }) {
     if (this.finished) return;
     if (events.redRun) this.fine('You ran a red light!', 'မီးနီကို ကျော်ဖြတ်မိသည်!', 20);
     if (events.giveWay) this.fine('You did not give way to a pedestrian.', 'လမ်းဖြတ်ကူးသူကို ဦးစားမပေးပါ။', 20);
@@ -138,6 +138,7 @@ export class Lesson {
     if (events.noLights) this.fine('Headlights off in the dark.', 'မှောင်ချိန်တွင် ရှေ့မီးမဖွင့်ပါ။', 10);
     if (events.unsafePass) this.fine('You overtook with a car coming towards you!', 'ဆန့်ကျင်ဘက်မှ ကားလာနေစဉ် ကျော်တက်မိသည်!', 25);
     if (events.noPassSignal) this.fine('You pulled out without signalling.', 'မီးမပြဘဲ ထွက်ကျော်မိသည်။', 10);
+    if (events.wrongWay) this.fine('You are driving the wrong way on a one-way road!', 'တစ်လမ်းသွားလမ်းတွင် ပြောင်းပြန်မောင်းနေသည်!', 25);
     if (events.hitPed) this.fine('You hit a pedestrian!', 'လမ်းဖြတ်ကူးသူကို တိုက်မိသည်!', 40);
     if (events.crash && s.t - this.lastCrash > 2.5) { this.lastCrash = s.t; this.fine('You crashed.', 'တိုက်မိသည်။', 10); }
     const lim = s.limit;

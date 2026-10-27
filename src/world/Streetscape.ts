@@ -7,7 +7,7 @@ interface B { pts: number[] }
 
 /** Pavements with kerbs along the roads, street trees and clusters of parked motorbikes on the pavement.
  *  Everything stays off carriageways (other roads' mouths are skipped), out of buildings and clear of signal, crossing and stop positions. */
-export function buildStreetscape(roads: R[], blds: B[], avoid: [number, number][]): THREE.Group {
+export function buildStreetscape(roads: R[], blds: B[], avoid: [number, number][], centre: [number, number] = [0, 0]): THREE.Group {
   const g = new THREE.Group();
   const onRoad = makeOnRoad(roads);
   let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -101,7 +101,7 @@ export function buildStreetscape(roads: R[], blds: B[], avoid: [number, number][
       }
     }
     // parked motorbikes against the building side, 2-4 in a row
-    if (bikes.length < 2600 && rnd() < 0.22) {
+    if (bikes.length < 2600 && rnd() < (Math.hypot(s.x - centre[0], s.z - centre[1]) < 650 ? 0.015 : 0.22)) {
       const n = 2 + Math.floor(rnd() * 3), bx = s.x + (-s.fz * s.side) * 0.35, bz = s.z + (s.fx * s.side) * 0.35;
       for (let k = 0; k < n; k++) {
         const px = bx + s.fx * (k - n / 2) * 0.9, pz = bz + s.fz * (k - n / 2) * 0.9;

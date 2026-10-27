@@ -23,34 +23,41 @@ export interface City { start: { x: number; z: number; heading: number }; signal
 const PALETTE = [0xe8d8b8, 0xd9a5a0, 0xb8cfe0, 0xe6e0d0, 0xc9d6b0, 0xf0c987, 0xcdb4db, 0xa9cdb5];
 
 function roadGeometry(roads: Road[]): THREE.BufferGeometry {
-  const pos: number[] = [], idx: number[] = [], col: number[] = [], uv: number[] = [];
+  const pos: number[] = [], idx: number[] = [], col: number[] = [], uv: number[] = [], mark: number[] = [];
   const c = new THREE.Color();
   // wider roads sit slightly lower so crossings don't flicker
   for (const r of roads) {
     const n = r.pts.length / 2;
     if (n < 2) continue;
     const y = 0.02 + (1 - Math.min(r.w, 14) / 14) * 0.06 + (r.br ? 0.02 : 0);
-    c.set(r.hw === 'service' || r.hw === 'living_street' ? 0x5c5f64 : 0x4a4d52);
+    c.set(r.hw === 'service' || r.hw === 'living_street' ? 0x7a7d82 : 0x65686d);
+    const edge = c.clone().lerp(new THREE.Color(0x9a8f7c), 0.45), gut = c.clone().multiplyScalar(0.8);
+    const inset = Math.min(0.9, r.w * 0.22), cols = [edge, gut, gut, edge], offs = [1, 1 - 2 * inset / r.w, -(1 - 2 * inset / r.w), -1];
     const base = pos.length / 3;
+    // lane markings are painted in the road shader: per vertex (lateral metres, distance along, distance to the nearer end, half-width or 0 when unmarked)
+    const marked = r.w >= 9 && !r.ow && ['primary', 'secondary', 'tertiary', 'trunk'].includes(r.hw) && !r.br;
+    const cum: number[] = [0]; for (let i = 1; i < n; i++) cum.push(cum[i - 1] + Math.hypot(r.pts[i * 2] - r.pts[i * 2 - 2], r.pts[i * 2 + 1] - r.pts[i * 2 - 1]));
+    const total = cum[n - 1];
     for (let i = 0; i < n; i++) {
       const x = r.pts[i * 2], z = r.pts[i * 2 + 1];
       const p = i > 0 ? i - 1 : i, q = i < n - 1 ? i + 1 : i;
       let dx = r.pts[q * 2] - r.pts[p * 2], dz = r.pts[q * 2 + 1] - r.pts[p * 2 + 1];
       const len = Math.hypot(dx, dz) || 1; dx /= len; dz /= len;
       const hw = r.w / 2;
-      pos.push(x - dz * hw, y, z + dx * hw, x + dz * hw, y, z - dx * hw);
-      uv.push((x - dz * hw) * 0.12, (z + dx * hw) * 0.12, (x + dz * hw) * 0.12, (z - dx * hw) * 0.12);
-      col.push(c.r, c.g, c.b, c.r, c.g, c.b);
+      for (let k = 0; k < 4; k++) {
+        const o = offs[k] * hw, px = x - dz * o, pz = z + dx * o;
+        pos.push(px, y, pz); uv.push(px * 0.12, pz * 0.12); mark.push(offs[k] * hw, cum[i], Math.min(cum[i], total - cum[i]), marked ? hw : 0); col.push(cols[k].r, cols[k].g, cols[k].b);
+      }
     }
     for (let i = 0; i < n - 1; i++) {
-      const a = base + i * 2;
-      idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+      for (let k = 0; k < 3; k++) { const a = base + i * 4 + k; idx.push(a, a + 4, a + 1, a + 1, a + 4, a + 5); }
     }
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute('aMark', new THREE.Float32BufferAttribute(mark, 4));
   g.setIndex(idx);
   g.computeVertexNormals();
   // ribbons may face down depending on direction; force up
@@ -78,31 +85,6 @@ function buildingGeometry(blds: Bld[]): THREE.BufferGeometry {
     geos.push(g.index ? g.toNonIndexed() : g);
   });
   return mergeGeometries(geos, false)!;
-}
-
-function markingGeometry(roads: Road[]): THREE.BufferGeometry {
-  const pos: number[] = [], idx: number[] = [];
-  const quad = (x: number, z: number, dx: number, dz: number, len: number, wd: number) => {
-    const nx = -dz * wd / 2, nz = dx * wd / 2, ex = dx * len, ez = dz * len, y = 0.12, b = pos.length / 3;
-    pos.push(x - nx, y, z - nz, x + nx, y, z + nz, x + ex + nx, y, z + ez + nz, x + ex - nx, y, z + ez - nz);
-    idx.push(b, b + 2, b + 1, b, b + 3, b + 2);
-  };
-  for (const r of roads) {
-    if (r.w < 9 || r.ow || !["primary", "secondary", "tertiary", "trunk"].includes(r.hw)) continue;
-    let carry = 0;
-    for (let i = 0; i < r.pts.length / 2 - 1; i++) {
-      const ax = r.pts[i * 2], az = r.pts[i * 2 + 1];
-      const L = Math.hypot(r.pts[i * 2 + 2] - ax, r.pts[i * 2 + 3] - az);
-      if (L < 0.5) continue;
-      const dx = (r.pts[i * 2 + 2] - ax) / L, dz = (r.pts[i * 2 + 3] - az) / L;
-      for (let d = carry; d + 3 <= L; d += 9) { quad(ax + dx * d, az + dz * d, dx, dz, 3, 0.2); carry = d + 9 - L; }
-      if (carry < 0) carry = 0;
-    }
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-  g.setIndex(idx);
-  return g;
 }
 
 function suleStupa(): THREE.Group {
@@ -136,8 +118,26 @@ function suleStupa(): THREE.Group {
 export async function loadCity(scene: THREE.Scene): Promise<City> {
   const data: MapData = await (await fetch(`${import.meta.env.BASE_URL}map/sule.json`)).json();
 
-  const { roughnessMap, normalMap } = makeAsphaltMaps();
-  const roadMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0.1, roughnessMap, normalMap, normalScale: new THREE.Vector2(0.6, 0.6) });
+  const { map, roughnessMap, normalMap } = makeAsphaltMaps();
+  const roadMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0.05, map, roughnessMap, normalMap, normalScale: new THREE.Vector2(0.8, 0.8) });
+  roadMaterial.onBeforeCompile = (sh) => {
+    sh.vertexShader = `attribute vec4 aMark;
+varying vec4 vMark;
+` + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+vMark = aMark;`);
+    sh.fragmentShader = `varying vec4 vMark;
+` + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      if (vMark.w > 0.0) {
+        float lat = vMark.x, al = vMark.y, hwm = vMark.w;
+        float aa = fwidth(lat) + 0.01, ab = fwidth(al) + 0.01;
+        float cen = 1.0 - smoothstep(0.09 - aa, 0.09 + aa, abs(lat));
+        float dash = smoothstep(0.0, ab, mod(al, 9.0)) * (1.0 - smoothstep(3.0 - ab, 3.0, mod(al, 9.0)));
+        float endFade = smoothstep(4.0, 5.0, vMark.z);
+        float edge = (1.0 - smoothstep(0.07 - aa, 0.07 + aa, abs(abs(lat) - (hwm - 0.55)))) * smoothstep(2.5, 3.5, vMark.z);
+        float m = max(cen * dash * endFade, edge);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.82, 0.8, 0.64), m * 0.92);
+      }`);
+  };
   // split into 300 m chunks so the GPU can skip whatever is off-screen
   const CH = 300;
   const chunk = <T,>(items: T[], pos: (t: T) => [number, number]) => {
@@ -156,8 +156,6 @@ export async function loadCity(scene: THREE.Scene): Promise<City> {
 
   for (const bl of data.buildings) addPolygon(bl.pts);
   for (const l of LANDMARKS) { const hx = l.w / 2, hz = l.d / 2; addPolygon([l.cx - hx, l.cz - hz, l.cx + hx, l.cz - hz, l.cx + hx, l.cz + hz, l.cx - hx, l.cz + hz]); }
-  const markMat = new THREE.MeshBasicMaterial({ color: 0xf5f0d0 });
-  for (const part of chunk(data.roads, (r) => [r.pts[0], r.pts[1]])) { const g = markingGeometry(part); if (g.index && g.index.count) scene.add(new THREE.Mesh(g, markMat)); }
   const roundabout = new Roundabout(data.roads);
   scene.add(roundabout.group);
   const stupa = buildSulePagoda(Math.max(20, roundabout.radius - 8.5));
@@ -194,7 +192,7 @@ export async function loadCity(scene: THREE.Scene): Promise<City> {
   const crossings = new Crossings(cpts, data.roads);
   scene.add(crossings.group);
   scene.add(buildBusStops(data.roads, [...centres, ...cpts]));
-  scene.add(buildStreetscape(data.roads as never, data.buildings, [...centres, ...cpts, [roundabout.cx, roundabout.cz]]));
+  scene.add(buildStreetscape(data.roads as never, data.buildings, [...centres, ...cpts, [roundabout.cx, roundabout.cz]], centre as [number, number]));
   const phone = matchMedia("(pointer: coarse)").matches;
   const traffic = new Traffic(data.roads, signals, crossings, phone ? 14 : 26, phone ? 3 : 6, phone ? 3 : 6);
   scene.add(traffic.group);
