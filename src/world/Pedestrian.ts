@@ -155,6 +155,8 @@ export function makePedestrian(rnd: () => number): THREE.Group {
     g.add(bag, strap);
   }
 
+  // the drawn figure is ~1.95 m tall (chibi head + bun); scale to a real Yangon adult next to a 1.5 m car (men ~1.67 m, women ~1.57 m)
+  g.scale.setScalar((female ? 0.8 : 0.86) * (0.96 + rnd() * 0.08));
   g.userData.parts = { armL, armR, footL, footR, torso, skirt } as PedParts;
   g.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
   return g;
