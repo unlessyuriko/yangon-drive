@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { makeOnRoad } from './RoadClear';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 interface Road { w: number; pts: number[]; ow: number; hw: string }
@@ -55,6 +56,7 @@ export function buildBusStops(roads: Road[], avoid: [number, number][]): THREE.G
     group.add(m); texMats.push(m);
   };
 
+  const onRoad = makeOnRoad(roads);
   let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   let count = 0;
   for (const r of roads) {
@@ -75,6 +77,7 @@ export function buildBusStops(roads: Road[], avoid: [number, number][]): THREE.G
         const rightx = -dfz, rightz = dfx;                                  // kerb side
         const off = r.w / 2 + 2.3;
         const px = cx + rightx * off, pz = cz + rightz * off;
+        if ([-2, 0, 2].some((o) => onRoad(px + dfx * o * 1.1, pz + dfz * o * 1.1, -1.2))) continue;   // another carriageway overlaps this kerb
         const th = Math.atan2(dfz, -dfx);
         const base = new THREE.Matrix4().makeRotationY(th).setPosition(px, 0, pz);
         // canopy + fascia

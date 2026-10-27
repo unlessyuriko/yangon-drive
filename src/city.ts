@@ -5,10 +5,12 @@ import { buildBusStops } from "./world/BusStops";
 import { buildSulePagoda } from "./world/SulePagoda";
 import { buildBuildings, BuildingSet } from "./world/Buildings";
 import { buildSigns } from "./signs";
+import { buildStreetscape } from "./world/Streetscape";
 import { Signals } from "./signals";
 import { Crossings } from "./crossings";
 import { Traffic } from "./traffic";
 import { Roundabout } from "./roundabout";
+import { buildLandmarks, LANDMARKS } from "./world/Landmarks";
 import { pickOvertake, OvertakeSite } from "./world/Overtake";
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
@@ -147,9 +149,13 @@ export async function loadCity(scene: THREE.Scene): Promise<City> {
     { const m = new THREE.Mesh(roadGeometry(part), roadMaterial); m.receiveShadow = true; scene.add(m); }
   const centre = (() => { const rb = data.roads.filter((r) => (r as any).rb); let sx = 0, sz = 0, n = 0; for (const r of rb) for (let i = 0; i < r.pts.length; i += 2) { sx += r.pts[i]; sz += r.pts[i + 1]; n++; } return n ? [sx / n, sz / n] : [0, 0]; })();
   data.buildings = data.buildings.filter((b) => { let x = 0, z = 0; const n = b.pts.length / 2; for (let i = 0; i < b.pts.length; i += 2) { x += b.pts[i]; z += b.pts[i + 1]; } return Math.hypot(x / n - centre[0], z / n - centre[1]) > 46; });
-  const buildingSet = buildBuildings(scene, data.buildings);
+  // the hand-built landmarks replace the generic OSM footprints they stand on
+  data.buildings = data.buildings.filter((b) => !LANDMARKS.some((l) => { const inside = (x: number, z: number) => Math.abs(x - l.cx) < l.w / 2 + 2 && Math.abs(z - l.cz) < l.d / 2 + 2; let cx = 0, cz = 0; const n = b.pts.length / 2; for (let i = 0; i < b.pts.length; i += 2) { if (inside(b.pts[i], b.pts[i + 1])) return true; cx += b.pts[i]; cz += b.pts[i + 1]; } return inside(cx / n, cz / n); }));
+  scene.add(buildLandmarks());
+  const buildingSet = buildBuildings(scene, data.buildings, centre as [number, number]);
 
   for (const bl of data.buildings) addPolygon(bl.pts);
+  for (const l of LANDMARKS) { const hx = l.w / 2, hz = l.d / 2; addPolygon([l.cx - hx, l.cz - hz, l.cx + hx, l.cz - hz, l.cx + hx, l.cz + hz, l.cx - hx, l.cz + hz]); }
   const markMat = new THREE.MeshBasicMaterial({ color: 0xf5f0d0 });
   for (const part of chunk(data.roads, (r) => [r.pts[0], r.pts[1]])) { const g = markingGeometry(part); if (g.index && g.index.count) scene.add(new THREE.Mesh(g, markMat)); }
   const roundabout = new Roundabout(data.roads);
@@ -188,6 +194,7 @@ export async function loadCity(scene: THREE.Scene): Promise<City> {
   const crossings = new Crossings(cpts, data.roads);
   scene.add(crossings.group);
   scene.add(buildBusStops(data.roads, [...centres, ...cpts]));
+  scene.add(buildStreetscape(data.roads as never, data.buildings, [...centres, ...cpts, [roundabout.cx, roundabout.cz]]));
   const phone = matchMedia("(pointer: coarse)").matches;
   const traffic = new Traffic(data.roads, signals, crossings, phone ? 14 : 26, phone ? 3 : 6, phone ? 3 : 6);
   scene.add(traffic.group);

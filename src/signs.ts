@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { makeOnRoad } from './world/RoadClear';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 interface Road { w: number; pts: number[]; name: string; en: string; my: string; hw: string; ow?: number; rb?: number }
@@ -13,6 +14,13 @@ const CELL_W = 400 * SC, CELL_H = 100 * SC, COLS = 5;
  *  the named road leads, so "35th Street >" really is where 35th Street goes. Both faces read correctly. Dead ends get a plain blade facing along the road.
  *  One-way roads (traffic runs toward increasing vertex index) also get a blue ONE WAY sign at the entry and a red NO ENTRY sign at the far end. */
 export function buildSigns(roads: Road[]): THREE.Group {
+  const onRoad = makeOnRoad(roads);
+  /** offset that moves a pole from the carriageway to the nearest kerb spot (0,0 when it already stands clear) */
+  const clearOf = (x: number, z: number): [number, number] => {
+    if (!onRoad(x, z, -0.8)) return [0, 0];
+    for (let rad = 1; rad <= 30; rad++) for (let k = 0; k < 24; k++) { const a = (k / 24) * Math.PI * 2, dx = Math.cos(a) * rad, dz = Math.sin(a) * rad; if (!onRoad(x + dx, z + dz, -0.8)) return [dx, dz]; }
+    return [0, 0];
+  };
   const label = (r: Road) => {
     const my = r.my || (isMy(r.name) ? r.name : '');
     const en = r.en || (r.name && !isMy(r.name) ? r.name : '');
@@ -116,7 +124,8 @@ export function buildSigns(roads: Road[]): THREE.Group {
         const sgn = (-fx * px + -fz * pz) >= 0 ? 1 : -1;               // which side of the cross road the named road lies on
         // pole on the corner of the junction (just outside the named road's mouth, on the cross road's kerb); the blade's flat end is bolted to it and the arrow tip points out toward the named road
         const along = r.w / 2 + 0.9, kerb = Y.r.w / 2 + 0.7;
-        const polex = x0 + px * sgn * kerb + tx * along, polez = z0 + pz * sgn * kerb + tz * along;
+        let polex = x0 + px * sgn * kerb + tx * along, polez = z0 + pz * sgn * kerb + tz * along;
+        { const [mx, mz] = clearOf(polex, polez); polex += mx; polez += mz; }
         const reach = HL + 0.06;
         cx = polex + px * sgn * reach; cz = polez + pz * sgn * reach;
         Nx = tx; Nz = tz;
@@ -135,6 +144,7 @@ export function buildSigns(roads: Road[]): THREE.Group {
       } else {
         // dead end: plain blade facing along the road, pole at its kerb end
         cx = x0 - fx * 5 + rx * (r.w / 2 + 1.6); cz = z0 - fz * 5 + rz * (r.w / 2 + 1.6);
+        { const [mx, mz] = clearOf(cx + rx * (HL + 0.07), cz + rz * (HL + 0.07)); cx += mx; cz += mz; }
         const list = placed.get(l.key) ?? []; placed.set(l.key, list);
         if (list.some(([qx, qz]) => Math.hypot(qx - cx, qz - cz) < 25)) continue; list.push([cx, cz]);
         const [u0, v0, u1, v1] = cellUV(e.idx, 0);
@@ -144,7 +154,8 @@ export function buildSigns(roads: Road[]): THREE.Group {
       n++;
       if (r.ow) {
         // traffic runs toward the last vertex: ONE WAY at the entry, NO ENTRY at the exit facing oncoming wrong-way drivers
-        const sx = x0 - fx * (end === 0 ? 3 : 0.5) - rx * (r.w / 2 + 0.9), sz = z0 - fz * (end === 0 ? 3 : 0.5) - rz * (r.w / 2 + 0.9);
+        let sx = x0 - fx * (end === 0 ? 3 : 0.5) - rx * (r.w / 2 + 0.9), sz = z0 - fz * (end === 0 ? 3 : 0.5) - rz * (r.w / 2 + 0.9);
+        { const [mx, mz] = clearOf(sx - rx * 0.4, sz - rz * 0.4); sx += mx; sz += mz; }
         if (end === 0) quad(sp, suv, sidx, sx, sz, fx, fz, 0.35, 2.0, 2.7, 0, 0, 0.5, 1);
         else quad(sp, suv, sidx, sx, sz, fx, fz, 0.35, 2.0, 2.7, 0.5, 0, 1, 1);
         const p2 = new THREE.CylinderGeometry(0.05, 0.06, 2.8, 6); p2.translate(sx - rx * 0.4, 1.4, sz - rz * 0.4); poles.push(p2);
