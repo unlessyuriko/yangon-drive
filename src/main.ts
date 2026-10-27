@@ -10,6 +10,7 @@ import type { OvertakeSite } from "./world/Overtake";
 import { Roundabout } from "./roundabout";
 import { buildCockpit, EYE } from "./cockpit";
 import { buildCarModel, CarModel } from "./vehicle/CarVisuals";
+import { vp, coarse, updateViewport, toVirt, dVirt } from "./core/Viewport";
 import { loadMugenModel } from "./vehicle/MugenModel";
 import { makeCarEnv } from "./reflections";
 import { startSound, updateSound, thud, setRainSound } from "./sound";
@@ -39,7 +40,7 @@ sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.25;
 scene.add(sun, sun.target);
 const SUN_OFFSET = new THREE.Vector3(60, 100, 40);
 
-const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 600);
+const camera = new THREE.PerspectiveCamera(70, vp.w / vp.h, 0.1, 600);
 const gr = new GameRenderer(scene, camera, phone);
 const renderer = gr.gl;
 const hud = new HUD();
@@ -195,7 +196,7 @@ function toggleView() {
 }
 toggleView(); toggleView();
 
-if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
+if (coarse) document.body.classList.add('touch');
 // phones: ask for fullscreen and a landscape lock on the first touch (Android honours it; iOS cannot, so the CSS rotate prompt covers portrait)
 if (document.body.classList.contains('touch')) {
   const lockLandscape = () => { const o = screen.orientation as ScreenOrientation & { lock?: (t: string) => Promise<void> }; o?.lock?.('landscape').catch(() => {}); };
@@ -217,8 +218,8 @@ $('indR').addEventListener('pointerdown', () => { indR = !indR; indL = false; })
 {
   const zone = $('wheelzone'), knob = $('knob');
   const move = (e: PointerEvent) => {
-    const r = zone.getBoundingClientRect();
-    const t = ((e.clientX - r.left) / r.width) * 2 - 1;
+    const [vx] = toVirt(e.clientX, e.clientY);
+    const t = ((vx - zone.offsetLeft) / zone.offsetWidth) * 2 - 1;
     steerTouch = Math.max(-1, Math.min(1, t * 1.25));
     knob.style.left = `${75 + steerTouch * 60}px`;
   };
@@ -229,12 +230,57 @@ $('indR').addEventListener('pointerdown', () => { indR = !indR; indL = false; })
   zone.addEventListener('pointercancel', end);
 }
 
+// ---- touch steering: tilt the phone like a wheel (default), big hold-to-steer arrows, or the slider ----
+type SteerMode = 'tilt' | 'arrows' | 'slider';
+const sGet = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
+let steerMode: SteerMode = (['tilt', 'arrows', 'slider'].includes(sGet('yd.steer') ?? '') ? sGet('yd.steer') : 'tilt') as SteerMode;
+let tiltOK = false, tiltRoll = 0, tiltZero: number | null = null, tiltSteer = 0, arrowL = false, arrowR = false, arrowV = 0;
+const effSteer = (): SteerMode => (steerMode === 'tilt' && (vp.rot || !tiltOK) ? 'arrows' : steerMode);
+const applySteerUi = () => {
+  const m = effSteer();
+  document.body.classList.toggle('steer-tilt', m === 'tilt'); document.body.classList.toggle('steer-arrows', m === 'arrows');
+  document.querySelectorAll<HTMLElement>('#s-steer button').forEach((b) => b.classList.toggle('on', b.dataset.s === steerMode));
+};
+if (coarse) {
+  for (const [id, set] of [['steerL', (v: boolean) => (arrowL = v)], ['steerR', (v: boolean) => (arrowR = v)]] as const) hold($(id), set);
+  document.querySelectorAll<HTMLElement>('#s-steer button').forEach((b) => b.addEventListener('click', () => {
+    steerMode = b.dataset.s as SteerMode; try { localStorage.setItem('yd.steer', steerMode); } catch { /* private mode */ }
+    tiltZero = null; applySteerUi();
+  }));
+  // phone roll from gravity in the screen plane (iOS reports the opposite sign to Android)
+  addEventListener('devicemotion', (e) => {
+    const a = e.accelerationIncludingGravity; if (!a || a.x == null || a.y == null) return;
+    const k = /iPhone|iPad|iPod/.test(navigator.userAgent) ? -1 : 1, ax = a.x * k, ay = a.y * k;
+    const ang = screen.orientation?.angle ?? 0;
+    const [sx, sy] = ang === 90 ? [-ay, ax] : ang === 270 || ang === -90 ? [ay, -ax] : ang === 180 ? [-ax, -ay] : [ax, ay];
+    if (Math.hypot(sx, sy) < 3) return;                       // phone lying flat: no usable roll
+    const roll = Math.atan2(sx, sy);
+    tiltRoll += (roll - tiltRoll) * 0.3; if (!tiltOK) { tiltOK = true; tiltRoll = roll; applySteerUi(); }
+  });
+  addEventListener('orientationchange', () => { tiltZero = null; });
+  addEventListener('resize', applySteerUi);
+  // iOS asks for motion permission on a tap
+  addEventListener('pointerdown', () => { const D = DeviceMotionEvent as unknown as { requestPermission?: () => Promise<string> }; D.requestPermission?.().catch(() => {}); }, { once: true });
+  applySteerUi();
+}
+function touchSteer(dt: number): number {
+  const m = effSteer();
+  arrowV += (((arrowL ? 1 : 0) - (arrowR ? 1 : 0)) - arrowV) * Math.min(1, ((arrowL || arrowR) ? 3 : 8) * dt);
+  if (m === 'tilt') {
+    if (tiltZero === null) tiltZero = tiltRoll;
+    const d = tiltRoll - tiltZero, v = Math.abs(d) < 0.05 ? 0 : (d - Math.sign(d) * 0.05) / 0.55;
+    tiltSteer = Math.max(-1, Math.min(1, v)); $('knob').style.left = `${75 + tiltSteer * 60}px`;
+    return tiltSteer;
+  }
+  return m === 'arrows' ? arrowV : steerTouch;
+}
+
 // drag on the view to look around (springs back on release)
 renderer.domElement.addEventListener('pointerdown', (e) => { dragging = true; renderer.domElement.setPointerCapture(e.pointerId); });
 renderer.domElement.addEventListener('pointermove', (e) => {
   if (!dragging) return;
-  dragYaw = Math.max(-2.2, Math.min(2.2, dragYaw + e.movementX * 0.006));
-  dragPitch = Math.max(-0.5, Math.min(0.5, dragPitch + e.movementY * 0.004));
+  dragYaw = Math.max(-2.2, Math.min(2.2, dragYaw + dVirt(e.movementX, e.movementY)[0] * 0.006));
+  dragPitch = Math.max(-0.5, Math.min(0.5, dragPitch + dVirt(e.movementX, e.movementY)[1] * 0.004));
 });
 const endDrag = () => (dragging = false);
 renderer.domElement.addEventListener('pointerup', endDrag);
@@ -250,7 +296,8 @@ function step(dt: number) {
   const brake = k('Space') || brakeTouch;
   const steerIn = (k('KeyA') || k('ArrowLeft') ? 1 : 0) - (k('KeyD') || k('ArrowRight') ? 1 : 0);
   steerKey += (steerIn - steerKey) * Math.min(1, (steerIn === 0 ? 4 : 2.5) * dt);
-  const steer = Math.max(-1, Math.min(1, steerKey + steerTouch));
+  // touch steering eases off with speed so a wobbly thumb or hand cannot spin the car
+  const steer = Math.max(-1, Math.min(1, steerKey + touchSteer(dt) * (1 - 0.45 * Math.min(1, Math.abs(veh.speed) / 20))));
 
   const reverse = back && veh.speed < 0.5;
   veh.step(dt, {
@@ -438,7 +485,7 @@ const BASE_DPR = Math.min(window.devicePixelRatio, 1.5);
 const DPR_STEP = [1, 0.8, 0.62, 0.5];
 function applyQuality() {
   gr.setPixelRatio(Math.max(0.5, BASE_DPR * DPR_STEP[quality]));
-  gr.setSize(innerWidth, innerHeight);
+  gr.setSize(vp.w, vp.h);
   gr.fx = quality === 0 || (!phone && quality === 1);   // bloom / aberration / vignette
   shadowsOn = gr.fx;
   useMirror = quality === 0 || (!phone && quality === 1);
@@ -487,8 +534,9 @@ function frame(now: number) {
 requestAnimationFrame(frame);
 
 addEventListener('resize', () => {
-  gr.setSize(innerWidth, innerHeight);
-  camera.aspect = innerWidth / innerHeight;
+  updateViewport();
+  gr.setSize(vp.w, vp.h);
+  camera.aspect = vp.w / vp.h;
   camera.updateProjectionMatrix();
 });
 

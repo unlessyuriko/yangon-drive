@@ -1,3 +1,4 @@
+import { vp } from './core/Viewport';
 import * as THREE from 'three';
 
 interface Road { w: number; pts: number[]; hw: string }
@@ -148,7 +149,7 @@ export class Windscreen {
   update(dt: number, show: boolean, rain: number, wipers: boolean, speed: number) {
     if (!show || (rain < 0.05 && !this.drops.length)) { this.cv.style.display = 'none'; return; }
     this.cv.style.display = 'block';
-    const k = Math.min(devicePixelRatio, 1) * 0.75, W0 = Math.round(innerWidth * k), H0 = Math.round(innerHeight * k);
+    const k = Math.min(devicePixelRatio, 1) * 0.75, W0 = Math.round(vp.w * k), H0 = Math.round(vp.h * k);
     if (this.cv.width !== W0 || this.cv.height !== H0) { this.cv.width = W0; this.cv.height = H0; this.drops.length = 0; }
     const W = this.cv.width, H = this.cv.height;
     // new drops

@@ -1,3 +1,4 @@
+import { vp } from './Viewport';
 import * as THREE from 'three';
 import {
   EffectComposer, RenderPass, EffectPass, BloomEffect, ChromaticAberrationEffect, VignetteEffect, ToneMappingEffect, ToneMappingMode,
@@ -24,7 +25,7 @@ export class GameRenderer {
     gl.shadowMap.enabled = true;
     gl.shadowMap.type = THREE.PCFSoftShadowMap;
     this.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-    gl.setSize(innerWidth, innerHeight);
+    gl.setSize(vp.w, vp.h);
     document.body.appendChild(gl.domElement);
 
     this.composer = new EffectComposer(gl, { frameBufferType: THREE.HalfFloatType, multisampling: phone ? 0 : 4 });

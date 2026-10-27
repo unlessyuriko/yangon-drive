@@ -48,7 +48,7 @@
   #env{margin-top:2px;font-size:11px;color:var(--silver)}
   #scorebox{margin-top:5px;padding-top:5px;border-top:1px solid #2a2b31;display:flex;align-items:baseline;justify-content:space-between;color:var(--dim);font-size:10.5px;text-transform:uppercase}
   #score{font-family:var(--mono);font-size:22px;font-weight:700;color:#fff}
-  #help{position:fixed;left:12px;bottom:24px;max-width:min(760px,calc(100vw - 24px));padding:5px 10px;border-radius:8px;background:#111215b8;border:1px solid var(--edge);font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--dim)}
+  #help{position:fixed;left:12px;bottom:24px;max-width:min(760px,calc(var(--vw,100vw) - 24px));padding:5px 10px;border-radius:8px;background:#111215b8;border:1px solid var(--edge);font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--dim)}
   #credit{position:fixed;left:8px;bottom:2px;font-size:10px;color:#fff;opacity:.55;pointer-events:none}
   #touch{display:none}
   .touch #touch{display:block}
@@ -84,9 +84,9 @@
   #indL{top:84px;right:68px} #indR{top:84px;right:16px}
 
   /* ---------- mission card ---------- */
-  #lesson{position:fixed;top:12px;left:50%;transform:translateX(-50%);width:min(330px,calc(100vw - 440px));background:var(--carbon);color:var(--txt);border-radius:10px;border:1px solid var(--edge);border-left:4px solid var(--red);padding:6px 11px 9px;box-shadow:0 6px 16px #000a,inset 0 1px 0 #ffffff12;display:none;pointer-events:none;line-height:1.35;font-family:var(--ui);overflow:hidden}
+  #lesson{position:fixed;top:12px;left:50%;transform:translateX(-50%);width:min(330px,calc(var(--vw,100vw) - 440px));background:var(--carbon);color:var(--txt);border-radius:10px;border:1px solid var(--edge);border-left:4px solid var(--red);padding:6px 11px 9px;box-shadow:0 6px 16px #000a,inset 0 1px 0 #ffffff12;display:none;pointer-events:none;line-height:1.35;font-family:var(--ui);overflow:hidden}
   #lesson::before{content:"";display:block;height:7px;margin:0 -11px 5px;background:var(--hex) 0 0/14px 24px;opacity:.8}
-  @media(max-width:900px){#lesson{left:12px;transform:none;width:min(330px,calc(100vw - 24px - 70px));top:210px}.touch #lesson{width:min(330px,calc(100vw - 24px));top:134px}}
+  @media(max-width:900px){#lesson{left:12px;transform:none;width:min(330px,calc(var(--vw,100vw) - 24px - 70px));top:210px}.touch #lesson{width:min(330px,calc(var(--vw,100vw) - 24px));top:134px}}
   #l-head{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--silver)}
   #l-badge{background:var(--red);color:#fff;font-weight:700;padding:1px 8px;border-radius:3px;transform:skew(-10deg);white-space:nowrap;font-family:var(--mono);font-size:10px}
   #l-title{flex:1;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;font-family:var(--mono);font-size:10px}
@@ -95,22 +95,22 @@
   #l-fill{display:block;height:100%;width:0;background:linear-gradient(90deg,#8f0f1b,var(--red-hi));box-shadow:0 0 6px #e6001288;transition:width .4s}
   #l-text{font-size:14px;font-weight:600}
   #l-extra{font-family:var(--mono);font-size:12px;color:var(--silver);margin-top:3px;font-weight:700}
-  #toast{position:fixed;top:140px;left:50%;transform:translateX(-50%);background:#23080bee;color:#fff;border:1px solid var(--red);border-radius:8px;padding:5px 13px;opacity:0;transition:opacity .3s;pointer-events:none;text-align:center;font-size:13px;font-weight:600;max-width:90vw;box-shadow:0 4px 14px #000a}
+  #toast{position:fixed;top:140px;left:50%;transform:translateX(-50%);background:#23080bee;color:#fff;border:1px solid var(--red);border-radius:8px;padding:5px 13px;opacity:0;transition:opacity .3s;pointer-events:none;text-align:center;font-size:13px;font-weight:600;max-width:calc(var(--vw,100vw) * 0.9);box-shadow:0 4px 14px #000a}
   #toast b{font-family:var(--mono);color:var(--red-hi);margin-right:4px}
 
   /* ---------- dialogs ---------- */
   #settings,#result{position:fixed;inset:0;background:#05060acc;display:none;align-items:center;justify-content:center;z-index:11;backdrop-filter:blur(2px)}
   #result{z-index:10}
   #s-card,#r-card{background:var(--carbon);color:var(--txt);border:1px solid var(--edge);border-top:3px solid var(--red);border-radius:14px;padding:18px 22px;box-shadow:0 14px 40px #000c,inset 0 1px 0 #ffffff12;text-align:center}
-  #s-card{min-width:min(300px,86vw);text-align:left}
-  #r-card{max-width:min(420px,90vw)}
+  #s-card{min-width:min(300px,calc(var(--vw,100vw) * 0.86));text-align:left}
+  #r-card{max-width:min(420px,calc(var(--vw,100vw) * 0.9))}
   #s-card h3,#r-card h2{margin:0 0 12px;font-size:18px;text-transform:uppercase;font-family:var(--ui);font-weight:700;color:#fff}
   #r-card h2{font-size:20px}
   .srow{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;color:var(--silver);text-transform:uppercase}
   #s-lang{display:flex;gap:6px}
   button{font-family:var(--ui);cursor:pointer}
-  #s-lang button,#s-close,#r-card button{padding:8px 14px;border:1px solid #454852;border-radius:8px;background:linear-gradient(#30323a,#1a1b20);color:var(--silver);font-size:14px;font-weight:600;text-transform:uppercase;box-shadow:0 3px 0 #050506,0 6px 10px #0008,inset 0 1px 0 #ffffff3a,inset 0 -2px 3px #0008}
-  #s-lang button.on,#r-next,#s-close{background:linear-gradient(var(--red-hi),var(--red));border-color:#ff6b78;color:#fff}
+  #s-lang button,#s-steer button,#s-close,#r-card button{padding:8px 14px;border:1px solid #454852;border-radius:8px;background:linear-gradient(#30323a,#1a1b20);color:var(--silver);font-size:14px;font-weight:600;text-transform:uppercase;box-shadow:0 3px 0 #050506,0 6px 10px #0008,inset 0 1px 0 #ffffff3a,inset 0 -2px 3px #0008}
+  #s-lang button.on,#s-steer button.on,#r-next,#s-close{background:linear-gradient(var(--red-hi),var(--red));border-color:#ff6b78;color:#fff}
   #s-close{margin-top:14px;width:100%}
   #r-card button{margin:8px 5px 0}
   #r-card #r-text p{color:var(--silver)}
@@ -155,25 +155,31 @@
   #s-env .eb{position:relative;pointer-events:auto}
   #s-keys{margin:4px 0 14px;padding:8px 10px;border-radius:8px;background:#0d0e11;box-shadow:inset 0 2px 6px #000;font-family:"Rajdhani","Chakra Petch",monospace;font-size:12px;line-height:1.6;letter-spacing:.08em;color:#aeb0ba;text-align:left;max-width:340px}
   /* lesson card in the lower third so the road stays visible */
-  #lesson{top:auto!important;bottom:18px;left:50%;transform:translateX(-50%)!important;width:min(460px,calc(100vw - 24px))}
-  .touch #lesson{bottom:134px;width:min(420px,calc(100vw - 24px))}
+  #lesson{top:auto!important;bottom:18px;left:50%;transform:translateX(-50%)!important;width:min(460px,calc(var(--vw,100vw) - 24px))}
+  .touch #lesson{bottom:134px;width:min(420px,calc(var(--vw,100vw) - 24px))}
   #toast{top:auto;bottom:130px}
   /* phones: camera button top-left (the map dial covers the top-right corner); portrait shows a rotate prompt, the game is landscape-only */
   .touch #cam{left:14px;right:auto;top:14px;bottom:auto;width:60px;height:60px;z-index:5}
   .touch #indL,.touch #indR{top:auto;bottom:128px}
   .touch #indL{right:68px}
-  .touch #lesson{top:12px!important;bottom:auto!important;left:84px;transform:none!important;width:calc(100vw - 84px - 206px)}
+  .touch #lesson{top:12px!important;bottom:auto!important;left:84px;transform:none!important;width:calc(var(--vw,100vw) - 84px - 206px)}
   .touch #toast{bottom:auto;top:96px}
   #rotate{display:none;position:fixed;inset:0;z-index:100;background:#0b0c0f;color:#e8eaf0;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px;font-family:"Rajdhani","Chakra Petch",ui-sans-serif,sans-serif;font-size:20px;font-weight:600;letter-spacing:.06em}
   #rotate svg{width:84px;height:84px;fill:none;stroke:#e8eaf0;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;animation:rot 2.4s ease-in-out infinite}
   @keyframes rot{0%,20%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
-  @media (orientation:portrait){.touch #rotate{display:flex}}
+  .steer{display:none;width:84px;height:84px;bottom:30px;font-size:30px;pointer-events:auto;touch-action:none}
+  #steerL{left:20px} #steerR{left:118px}
+  .touch.steer-arrows .steer{display:flex}
+  .touch.steer-arrows #wheelzone{display:none}
+  .touch.steer-tilt #wheelzone{pointer-events:none;opacity:.75}
+  .steer-row{display:none}.touch .steer-row{display:flex}
+  #s-steer{display:flex;gap:6px}
+  body.rot{position:fixed;left:100vw;top:0;width:var(--vw);height:var(--vh);margin:0;overflow:hidden;transform-origin:0 0;transform:rotate(90deg)}
 </style>
 </head>
 <body>
 <div id="hud"><div id="shift"></div><div id="screen"><div id="spdrow"><div id="speed">0 <small>km/h</small></div><div id="gear">D1</div></div><div id="mode"></div><div id="env"></div>
 <div id="scorebox"><span data-en="Score" data-my="ရမှတ်">Score</span><span id="score">100</span></div></div></div>
-<div id="rotate"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/></svg><div data-en="Turn your phone sideways to drive" data-my="မောင်းရန် ဖုန်းကို ဘေးတိုက်လှည့်ပါ">Turn your phone sideways to drive</div></div>
 <div id="credit">© OpenStreetMap contributors · Building heights: 3D-GloBFP, Che et al. 2024 (CC BY 4.0)</div>
 <div id="envbtns">
   <div class="eb" id="bLights" title="Headlights (H)"><i></i><svg viewBox="0 0 24 24"><path d="M10 6c-4 0-7 3-7 6s3 6 7 6c1.2 0 2-.5 2-2V8c0-1.3-.8-2-2-2z"/><path d="M15 8h6M15 12h6M15 16h6"/></svg><span data-en="Lights" data-my="မီး">Lights</span></div>
@@ -182,7 +188,7 @@
 </div>
 <div id="lesson"><div id="l-head"><span id="l-badge"></span><span id="l-title"></span><span id="l-count"></span></div><div id="l-bar"><i id="l-fill"></i></div><div id="l-text"></div><div id="l-extra"></div></div>
 <div id="toast"></div>
-<div id="settings"><div id="s-card" class="stitch"><h3 data-en="Settings" data-my="ဆက်တင်">Settings</h3><div class="srow"><span data-en="Language" data-my="ဘာသာစကား">Language</span><div id="s-lang"><button data-l="en">English</button><button data-l="my">မြန်မာ</button></div></div><div class="srow"><span data-en="Weather" data-my="ရာသီဥတု">Weather</span><div id="s-env"><div class="eb" id="bNight" title="Night (N)"><i></i><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span data-en="Night" data-my="ည">Night</span></div><div class="eb" id="bRain" title="Rain (R)"><i></i><svg viewBox="0 0 24 24"><path d="M7 14a4 4 0 1 1 .8-7.9A5 5 0 0 1 17.5 8 3.5 3.5 0 0 1 17 15H7z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/></svg><span data-en="Rain" data-my="မိုး">Rain</span></div></div></div><div id="s-keys" data-en="W drive · S brake/reverse · A/D steer · Z/X indicators · N night · R rain · H headlights · V wipers · C camera · M map zoom · Q/E or drag to look" data-my="W မောင်း · S ဘရိတ်/နောက်ပြန် · A/D စတီယာရင် · Z/X မီးပြ · N ည · R မိုး · H ရှေ့မီး · V မိုးရေသုတ် · C ကင်မရာ · M မြေပုံ · Q/E ကြည့်ရန်"></div><button id="s-close" data-en="Close" data-my="ပိတ်မည်">Close</button></div></div>
+<div id="settings"><div id="s-card" class="stitch"><h3 data-en="Settings" data-my="ဆက်တင်">Settings</h3><div class="srow"><span data-en="Language" data-my="ဘာသာစကား">Language</span><div id="s-lang"><button data-l="en">English</button><button data-l="my">မြန်မာ</button></div></div><div class="srow steer-row"><span data-en="Steering" data-my="စတီယာရင်">Steering</span><div id="s-steer"><button data-s="tilt" data-en="Tilt" data-my="စောင်း">Tilt</button><button data-s="arrows" data-en="Arrows" data-my="မြှား">Arrows</button><button data-s="slider" data-en="Slider" data-my="ဆလိုက်">Slider</button></div></div><div class="srow"><span data-en="Weather" data-my="ရာသီဥတု">Weather</span><div id="s-env"><div class="eb" id="bNight" title="Night (N)"><i></i><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span data-en="Night" data-my="ည">Night</span></div><div class="eb" id="bRain" title="Rain (R)"><i></i><svg viewBox="0 0 24 24"><path d="M7 14a4 4 0 1 1 .8-7.9A5 5 0 0 1 17.5 8 3.5 3.5 0 0 1 17 15H7z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/></svg><span data-en="Rain" data-my="မိုး">Rain</span></div></div></div><div id="s-keys" data-en="W drive · S brake/reverse · A/D steer · Z/X indicators · N night · R rain · H headlights · V wipers · C camera · M map zoom · Q/E or drag to look" data-my="W မောင်း · S ဘရိတ်/နောက်ပြန် · A/D စတီယာရင် · Z/X မီးပြ · N ည · R မိုး · H ရှေ့မီး · V မိုးရေသုတ် · C ကင်မရာ · M မြေပုံ · Q/E ကြည့်ရန်"></div><button id="s-close" data-en="Close" data-my="ပိတ်မည်">Close</button></div></div>
 <div id="result"><div id="r-card" class="stitch"><div id="r-text"></div><button id="r-next" style="display:none" data-en="Next lesson" data-my="နောက်သင်ခန်းစာ">Next lesson</button><button id="r-retry" data-en="Retry" data-my="ထပ်လုပ်မည်">Retry</button><button id="r-free" data-en="Free drive" data-my="လွတ်လပ်စွာမောင်း">Free drive</button></div></div>
 <div id="touch">
   <div id="indL" class="btn ind">◀</div><div id="indR" class="btn ind">▶</div>
@@ -190,6 +196,7 @@
   <div id="brake" class="btn">Brake</div>
   <div id="gas" class="btn">Gas</div>
   <div id="cam" class="btn">Cam</div>
+  <div id="steerL" class="btn steer">◀</div><div id="steerR" class="btn steer">▶</div>
 </div>
 <script type="module" src="/src/main.ts"></script>
 </body>
