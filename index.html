@@ -160,8 +160,6 @@
   #toast{top:auto;bottom:130px}
   /* phones: camera button top-left (the map dial covers the top-right corner); portrait shows a rotate prompt, the game is landscape-only */
   .touch #cam{left:14px;right:auto;top:14px;bottom:auto;width:60px;height:60px;z-index:5}
-  .touch #indL,.touch #indR{top:auto;bottom:128px}
-  .touch #indL{right:68px}
   .touch #lesson{top:12px!important;bottom:auto!important;left:84px;transform:none!important;width:calc(var(--vw,100vw) - 84px - 206px)}
   .touch #toast{bottom:auto;top:96px}
   #rotate{display:none;position:fixed;inset:0;z-index:100;background:#0b0c0f;color:#e8eaf0;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px;font-family:"Rajdhani","Chakra Petch",ui-sans-serif,sans-serif;font-size:20px;font-weight:600;letter-spacing:.06em}
@@ -176,6 +174,27 @@
   .touch.steer-tilt #wheelzone{pointer-events:none;opacity:.75}
   .steer-row{display:none}.touch .steer-row{display:flex}
   #s-steer{display:flex;gap:6px}
+  /* phones: compact controls so they leave the road visible */
+  .touch #cam{left:10px;top:10px;width:46px;height:46px;font-size:11px;border-width:2px}
+  .touch #envbtns{left:10px;top:64px;bottom:auto;flex-direction:column;padding:4px;gap:4px;border-radius:10px}
+  .touch .eb{width:42px;height:38px}
+  .touch .eb span{display:none}
+  .touch .eb svg{margin-top:0;width:18px;height:18px}
+  .touch #lesson{top:8px!important;left:64px;width:calc(var(--vw,100vw) - 64px - 146px);padding:3px 9px 6px}
+  .touch #lesson::before{height:4px;margin:0 -9px 3px}
+  .touch #l-bar{margin:3px 0 4px}
+  .touch #l-text{font-size:12px;line-height:1.25}
+  .touch #l-extra{font-size:11px}
+  .touch #toast{top:70px;left:50%;font-size:12px}
+  .touch #gas{width:72px;height:72px;right:14px;bottom:16px;font-size:12px}
+  .touch #brake{width:58px;height:58px;right:96px;bottom:16px;font-size:11px}
+  .touch .steer{width:66px;height:66px;bottom:16px;font-size:22px}
+  .touch #steerL{left:14px} .touch #steerR{left:88px}
+  .touch #wheelzone{left:14px;bottom:16px;width:200px;height:66px;border-radius:33px}
+  .touch #knob{top:4px;height:54px}
+  .touch .ind{width:36px;height:36px;font-size:14px}
+  .touch #indL,.touch #indR{top:auto;bottom:96px}
+  .touch #indL{right:58px} .touch #indR{right:14px}
   body.rot{position:fixed;left:100vw;top:0;width:var(--vw);height:var(--vh);margin:0;overflow:hidden;transform-origin:0 0;transform:rotate(90deg)}
 </style>
 </head>

@@ -2,7 +2,8 @@ interface Road { w: number; pts: number[]; hw: string; name: string; en: string 
 export interface Landmark { x: number; z: number; label: string }
 interface Mob { x: number; z: number; active: boolean; bus: boolean }
 
-const PHONE = matchMedia('(pointer: coarse)').matches;
+import { coarse } from '../core/Viewport';
+const PHONE = coarse;
 const SIZE = PHONE ? 118 : 160;
 const ZOOMS = [0.35, 0.7, 1.4]; // screen px per metre
 
