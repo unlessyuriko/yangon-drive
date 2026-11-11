@@ -47,22 +47,30 @@ export function loadMugenModel(envMap?: THREE.Texture, onProgress?: (p: number) 
 
     // side mirrors: the model's mirror glass (material mirror1, one on each side of the car) is replaced by a plane that shows the road behind, drawn into a small render target
     const sideMirrors: { cam: THREE.PerspectiveCamera; rt: THREE.WebGLRenderTarget; plane: THREE.Mesh }[] = [];
+    const mirrorAt: THREE.Vector3[] = [];
     root.updateWorldMatrix(true, true);
     root.traverse((o) => {
       const me = o as THREE.Mesh; if (!me.isMesh) return;
       const names = (Array.isArray(me.material) ? me.material : [me.material]).map((m) => m.name);
       if (!names.includes('mirror1')) return;
       const b = new THREE.Box3().setFromObject(me), c = b.getCenter(new THREE.Vector3());
-      if (Math.abs(c.x) < 0.5) return;                       // the rear-view mirror is handled by the cockpit
+      if (Math.abs(c.x) < 0.5) { me.visible = false; return; }   // the rear-view mirror: the cockpit draws its own glass in the same place
       // face the glass back and in toward the driver, like the model's own mirror
       const n = new THREE.Vector3(c.x > 0 ? -0.5 : 0.5, 0, 0.87).normalize();
       me.visible = false;
       const rt = new THREE.WebGLRenderTarget(160, 104);
-      const plane = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.13), new THREE.MeshBasicMaterial({ map: rt.texture, side: THREE.DoubleSide }));
+      const plane = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.13), new THREE.MeshBasicMaterial({ map: rt.texture, color: 0xd2d8dc, side: THREE.DoubleSide }));   // tinted down a little: a render target skips the tone mapping the screen gets
       plane.scale.x = -1;                                    // a mirror image
       plane.position.copy(c).addScaledVector(n, 0.004); plane.lookAt(c.clone().add(n));
-      root.add(plane);
+      root.add(plane); mirrorAt.push(c);
       sideMirrors.push({ cam: new THREE.PerspectiveCamera(40, 160 / 104, 0.3, 140), rt, plane });
+    });
+    const rearAt = new THREE.Vector3(0, 1.22, -0.451);       // the rear-view mirror, drawn by the cockpit
+    // the glass has a second, cream-coloured layer (material *4) in front of it: hide it too or it covers the mirror
+    root.traverse((o) => {
+      const me = o as THREE.Mesh; if (!me.isMesh || !(Array.isArray(me.material) ? me.material : [me.material]).some((m) => m.name === '*4')) return;
+      const c = new THREE.Box3().setFromObject(me).getCenter(new THREE.Vector3());
+      if (mirrorAt.some((p) => p.distanceTo(c) < 0.08) || rearAt.distanceTo(c) < 0.15) me.visible = false;
     });
     let mirrorTick = 0;
     const mp = new THREE.Vector3(), md = new THREE.Vector3();
