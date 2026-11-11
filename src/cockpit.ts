@@ -8,7 +8,7 @@ export const EYE = new THREE.Vector3(0.38, 1.13, 0.22);
 export interface Cockpit {
   group: THREE.Group;
   update(o: { kmh: number; rpm: number; gear: number; steerAngle: number; indicatorL: boolean; indicatorR: boolean; t: number; night?: number }): void;
-  renderMirror(renderer: THREE.WebGLRenderer, scene: THREE.Scene, car: THREE.Object3D): void;
+  renderMirror(renderer: THREE.WebGLRenderer, scene: THREE.Scene, car: THREE.Object3D, every?: number): void;
   /** the car model brings its own interior: hide the drawn dash, seats and wheel and keep only the live instruments and the rear-view mirror, placed on the model's own parts */
   adopt(o: { gauge: { pos: THREE.Vector3; rotX: number; size: number }; mirror: { pos: THREE.Vector3; rot: THREE.Euler; w: number; h: number } }): { tach: THREE.Mesh; digi: THREE.Mesh; mirror: THREE.Mesh };
 }
@@ -271,8 +271,8 @@ export function buildCockpit(): Cockpit {
       mirror.position.copy(mi.pos); mirror.rotation.copy(mi.rot); mirror.scale.set(-mi.w / 0.22, mi.h / 0.055, 1);
       return { tach: tachMesh, digi: digiMesh, mirror };
     },
-    renderMirror(renderer, scene, car) {
-      if (!g.visible || (mirrorTick++ % (small ? 3 : 2))) return;
+    renderMirror(renderer, scene, car, every = small ? 3 : 2) {
+      if (!g.visible || (mirrorTick++ % every)) return;
       rear.position.copy(car.localToWorld(new THREE.Vector3(0.0, 1.35, 1.2)));
       rear.quaternion.copy(car.quaternion).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
       g.visible = false;

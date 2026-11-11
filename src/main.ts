@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { loadCity } from "./city";
 import { pushOut } from "./collision";
-import { Vehicle } from "./vehicle/CarPhysics";
+import { Vehicle, CAR_SPEC, BUS_SPEC } from "./vehicle/CarPhysics";
+import { YbsBus, routeFor, BusColour } from "./vehicle/YbsBus";
 import { Signals, Approach, lightState } from "./signals";
 import { Lesson } from "./lesson";
 import { Crossings } from "./crossings";
@@ -138,7 +139,7 @@ loadCity(scene).then((c) => {
 
 let mugenLoaded = false;
 const shell = [carModel.group];
-loadMugenModel(envIsNight ? envNight : envDay).then((m) => {
+loadMugenModel(envIsNight ? envNight : envDay, undefined, !coarse || /[?&]hq(&|$)/.test(location.search)).then((m) => {
   car.remove(carModel.group); car.add(m.group); shell[0] = m.group; carModel = m; mugenLoaded = true;
   // the model's own interior replaces the drawn cockpit: it stays visible in first person, only the live gauges and the rear-view mirror are added to it
   const parts = cockpit.adopt({ gauge: { pos: new THREE.Vector3(0.38, 0.93, -0.6), rotX: -0.8, size: 0.2 }, mirror: { pos: new THREE.Vector3(0, 1.22, -0.455), rot: new THREE.Euler(0.1, 0, 0), w: 0.2, h: 0.06 } });
@@ -148,6 +149,30 @@ loadMugenModel(envIsNight ? envNight : envDay).then((m) => {
 const cockpit = buildCockpit();
 car.add(cockpit.group);
 const veh = new Vehicle();
+// ---------- Drive the YBS bus instead of the Civic (Settings > Vehicle, or B) ----------
+const bus = new YbsBus();
+const busRig = new THREE.Group();            // the bus model faces +Z, the car group faces -Z: turn it round and put mid-wheelbase on the car origin
+busRig.rotation.y = Math.PI; busRig.position.z = 0.5; busRig.visible = false; busRig.add(bus.group); car.add(busRig);
+const BUS_EYE = new THREE.Vector3(0.62, 2.0, 3.75);   // driver's eye, bus-local (left-hand drive)
+type Kind = 'car' | 'bus';
+const VEH = {
+  car: { frontZ: -2.1, hit: [-1.3, 1.3], r: 1.0, smoke: [[-0.83, 1.35], [0.83, 1.35]], fov: 78 },
+  bus: { frontZ: -4.75, hit: [-3.6, -0.9, 1.8, 4.4], r: 1.3, smoke: [[-1.1, 3.05], [1.1, 3.05]], fov: 82 },
+};
+const store = { get: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } } };
+let vehicleKind: Kind = 'car', busColour: BusColour = 0;
+function applyBusLook(c: BusColour) { busColour = c; bus.setLivery(c, routeFor(c)); store.set('yd.buscol', String(c)); document.querySelectorAll<HTMLElement>('#s-buscol button').forEach((b) => b.classList.toggle('on', Number(b.dataset.c) === c)); }
+function refreshVehicleVis() {
+  const first = view === 'first', isBus = vehicleKind === 'bus';
+  cockpit.group.visible = first && !isBus;
+  shell.forEach((m) => (m.visible = !isBus && (view === 'third' || mugenLoaded)));
+  busRig.visible = isBus; bus.setInside(isBus && first);
+}
+function setVehicle(k: Kind) {
+  vehicleKind = k; veh.setSpec(k === 'bus' ? BUS_SPEC : CAR_SPEC); store.set('yd.veh', k);
+  document.querySelectorAll<HTMLElement>('#s-veh button').forEach((b) => b.classList.toggle('on', b.dataset.v === k));
+  refreshVehicleVis(); arm.set(0, 2, 7.4);
+}
 const env = new Environment(scene, hemi, sun, car);
 const rainField = new RainField(scene, matchMedia('(pointer: coarse)').matches ? 700 : 1400);
 const windscreen = new Windscreen();
@@ -176,6 +201,7 @@ addEventListener('keydown', (e) => {
   keys.add(e.code);
   if (e.repeat) return;
   if (e.code === 'KeyC') toggleView();
+  if (e.code === 'KeyB') setVehicle(vehicleKind === 'car' ? 'bus' : 'car');
   if (e.code === 'KeyN') tog('night');
   if (e.code === 'KeyR') tog('rain');
   if (e.code === 'KeyH') tog('headlights');
@@ -190,8 +216,7 @@ addEventListener('pointerdown', () => startSound());
 
 function toggleView() {
   view = view === 'first' ? 'third' : 'first';
-  cockpit.group.visible = view === 'first';
-  shell.forEach((m) => (m.visible = view === 'third' || mugenLoaded));
+  refreshVehicleVis();
   hud.setMode(view === 'first' ? 'First person' : 'Third person');
 }
 toggleView(); toggleView();
@@ -318,13 +343,14 @@ function step(dt: number) {
   odo += veh.speed * dt;
   // collisions: two circles along the car body
   let hit = false, hx = 0, hz = 0, hnx = 0, hnz = 0;
-  for (const lz of [-1.3, 1.3]) {
+  const V = VEH[vehicleKind];
+  for (const lz of V.hit) {
     const p = car.localToWorld(new THREE.Vector3(0, 0, lz));
-    const [dx, dz] = pushOut(p.x, p.z, 1.0);
+    const [dx, dz] = pushOut(p.x, p.z, V.r);
     if (dx || dz) { car.position.x += dx; car.position.z += dz; hit = true; const l = Math.hypot(dx, dz) || 1; hx = p.x - dx / l; hz = p.z - dz / l; hnx = dx / l; hnz = dz / l; }
     if (traffic) {
       const q = car.localToWorld(new THREE.Vector3(0, 0, lz));
-      const [tx, tz] = traffic.pushPlayer(q.x, q.z, 1.0);
+      const [tx, tz] = traffic.pushPlayer(q.x, q.z, V.r);
       if (tx || tz) { car.position.x += tx; car.position.z += tz; hit = true; }
     }
   }
@@ -334,7 +360,7 @@ function step(dt: number) {
   smokeT -= dt;
   if (smokeT <= 0 && ((veh.brakeIn > 0.75 && Math.abs(veh.speed) > 14) || (Math.abs(veh.latAccel) > 7 && Math.abs(veh.speed) > 8))) {
     smokeT = 0.05;
-    for (const sx of [-0.83, 0.83]) { const w = car.localToWorld(new THREE.Vector3(sx, 0.12, 1.35)); particles.emitSmoke(w.x, w.y, w.z, -Math.sin(car.rotation.y) * veh.speed, -Math.cos(car.rotation.y) * veh.speed); }
+    for (const [sx, sz] of V.smoke) { const w = car.localToWorld(new THREE.Vector3(sx, 0.12, sz)); particles.emitSmoke(w.x, w.y, w.z, -Math.sin(car.rotation.y) * veh.speed, -Math.cos(car.rotation.y) * veh.speed); }
   }
   let crash = false;
   if (hit) {
@@ -345,7 +371,7 @@ function step(dt: number) {
 
   // traffic rules
   let redRun = false, giveWay = false, hitPed = false;
-  const front = car.localToWorld(new THREE.Vector3(0, 0, -2.1));
+  const front = car.localToWorld(new THREE.Vector3(0, 0, V.frontZ));
   if (signals) {
     for (const e of signals.check(front.x, front.z, clock, veh.speed > 0.5)) {
       if (e.state === 'red') redRun = true;
@@ -462,23 +488,30 @@ function updateCamera(dt: number) {
     bob += dt * Math.abs(veh.speed) * 1.6;
     const shake = Math.min(1, Math.abs(veh.speed) / 15) * 0.0025;
     const sh = Math.sin(bob * 3.1) * shake + Math.sin(bob * 7.3) * shake * 0.5;
-    camera.position.copy(car.localToWorld(tmp.copy(EYE)));
+    camera.position.copy(vehicleKind === 'bus' ? busRig.localToWorld(tmp.copy(BUS_EYE)) : car.localToWorld(tmp.copy(EYE)));
     camera.position.y += sh;
     camera.rotation.set(-0.04 + pitchS + dragPitch + sh * 2, car.rotation.y + lookS, rollS, 'YXZ');
-    camera.fov = 78;
+    camera.fov = VEH[vehicleKind].fov;
   } else {
     // spring-arm chase camera: the arm (in car space) lags on acceleration and swings outward in corners / slides
     const sp = Math.abs(veh.speed), s01 = Math.min(1, sp / 38);
     const swing = Math.max(-2.6, Math.min(2.6, veh.yawRate * sp * 0.1));
-    const back = 7.4 + Math.max(-1.2, Math.min(2.0, -veh.accel * 0.22)) + s01 * 1.2;
-    arm.lerp(tmp.set(swing, 1.9 + s01 * 0.35, back), 1 - Math.exp(-4.5 * dt));
+    const big = vehicleKind === 'bus';
+    const back = (big ? 14.5 : 7.4) + Math.max(-1.2, Math.min(2.0, -veh.accel * 0.22)) + s01 * 1.2;
+    arm.lerp(tmp.set(swing * (big ? 1.4 : 1), (big ? 4.6 : 1.9) + s01 * 0.35, back), 1 - Math.exp(-4.5 * dt));
     camera.position.copy(car.localToWorld(tmp.copy(arm)));
-    camera.lookAt(car.localToWorld(tmp.set(arm.x * -0.35, 1.0, -4)));
+    camera.lookAt(car.localToWorld(tmp.set(arm.x * -0.35, big ? 1.6 : 1.0, big ? -8 : -4)));
     camFov += ((55 + 23 * s01) - camFov) * (1 - Math.exp(-3 * dt));
     camera.fov = camFov;
   }
   camera.updateProjectionMatrix();
 }
+
+/** engine speed on the car's scale, so the HUD and the engine sound work for the diesel bus too */
+const carRpm = () => vehicleKind === 'car' ? veh.rpm : 800 + (veh.rpm - BUS_SPEC.idle) / (BUS_SPEC.redline - BUS_SPEC.idle) * 3200;
+document.querySelectorAll<HTMLElement>('#s-veh button').forEach((b) => b.addEventListener('click', () => setVehicle(b.dataset.v as Kind)));
+document.querySelectorAll<HTMLElement>('#s-buscol button').forEach((b) => b.addEventListener('click', () => { applyBusLook(Number(b.dataset.c) as BusColour); if (vehicleKind !== 'bus') setVehicle('bus'); }));
+{ const c = Number(store.get('yd.buscol')); applyBusLook(((c === 1 || c === 2) ? c : 0) as BusColour); setVehicle(store.get('yd.veh') === 'bus' ? 'bus' : 'car'); }
 
 // ---------- Loop ----------
 let last = performance.now(), clock = 0;
@@ -511,7 +544,7 @@ function frame(now: number) {
   perf.time('misc', () => {
     signals?.update(clock);
     updateCamera(dt);
-    cockpit.update({ kmh: Math.abs(veh.speed) * 3.6, rpm: veh.rpm, gear: veh.gear, steerAngle: veh.steerAngle, indicatorL: indL, indicatorR: indR, t: clock, night: env.nightT });
+    if (vehicleKind === 'car') cockpit.update({ kmh: Math.abs(veh.speed) * 3.6, rpm: veh.rpm, gear: veh.gear, steerAngle: veh.steerAngle, indicatorL: indL, indicatorR: indR, t: clock, night: env.nightT });
     minimap.update(car.position.x, car.position.z, car.rotation.y, traffic?.agents, beam.visible ? beam.position : null);
     env.update(dt);
     particles.update(dt);
@@ -520,20 +553,22 @@ function frame(now: number) {
     scene.environmentIntensity = 0.55 + 0.45 * env.nightT;
     sun.castShadow = shadowsOn && env.nightT < 0.7;
     sun.target.position.copy(car.position); sun.position.copy(car.position).add(SUN_OFFSET);
-    carModel.update({ dist: odo, steerAngle: veh.steerAngle, braking: veh.brakeIn > 0.2, headlights: env.headlights, night: env.nightT });
+    if (vehicleKind === 'bus') { bus.roll(odo, veh.steerAngle); bus.update({ braking: veh.brakeIn > 0.2, headlights: env.headlights, night: env.nightT, indL, indR, t: clock, reverse: veh.gear < 0 }, Math.abs(veh.speed) * 3.6, veh.rpm); }
+    else carModel.update({ dist: odo, steerAngle: veh.steerAngle, braking: veh.brakeIn > 0.2, headlights: env.headlights, night: env.nightT });
     veh.wet = env.wet;
     traffic?.setNight(env.nightT > 0.4);
     cityBuildings?.setNight(env.nightT);
     setRainSound(env.rainT);
-    updateSound(veh.rpm, veh.throttle, veh.speed);
+    updateSound(carRpm(), veh.throttle, veh.speed);
     hud.setSpeed(Math.abs(veh.speed) * 3.6);
-    hud.setRpm(veh.rpm, veh.gear, clock);
+    hud.setRpm(carRpm(), veh.gear, clock);
   });
   perf.time('rain', () => {
     rainField.update(dt, camera.position, env.rainT);
     windscreen.update(dt, view === 'first', env.rainT, env.wipers, Math.abs(veh.speed));
   });
-  if (view === 'first' && useMirror) perf.time('mirror', () => { if (mugenLoaded) shell[0].visible = false; cockpit.renderMirror(renderer, scene, car); if (mugenLoaded) shell[0].visible = true; });
+  // mirrors stay on at every quality level; when the game is struggling they just redraw less often
+  if (vehicleKind === 'car') perf.time('mirror', () => { if (mugenLoaded) shell[0].visible = false; if (view === 'first') cockpit.renderMirror(renderer, scene, car, useMirror ? undefined : 6); carModel.renderMirrors?.(renderer, scene, useMirror ? 3 : 8); if (mugenLoaded) shell[0].visible = true; });
   perf.time('render', () => gr.render(dt, scene, camera, Math.min(1, Math.abs(veh.speed) / 38), veh.brakeIn > 0.7 ? Math.min(1, Math.abs(veh.speed) / 25) : 0));
   requestAnimationFrame(frame);
 }

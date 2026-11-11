@@ -70,6 +70,8 @@ export interface CarModel {
   update(o: { dist: number; steerAngle: number; braking: boolean; headlights: boolean; night: number }): void;
   /** swap the reflection environment (day sky / neon night) */
   setEnv(t: THREE.Texture): void;
+  /** side mirrors: draw the road behind into the mirror glass; `every` = frames between redraws */
+  renderMirrors?(renderer: THREE.WebGLRenderer, scene: THREE.Scene, every?: number): void;
 }
 
 const canvasTex = (w: number, h: number, draw: (c: CanvasRenderingContext2D) => void, rep?: [number, number]) => {

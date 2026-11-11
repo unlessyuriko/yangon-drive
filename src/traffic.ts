@@ -106,7 +106,7 @@ export class Traffic {
       const nx = this.chooseNext(ei); if (nx < 0) continue;
       a.e = ei; a.next = nx; a.x = x; a.z = z; a.h = Math.atan2(e.dx, e.dz); a.v = 0; a.active = true; a.stuck = 0;
       if (a.taxi) this.taxis[a.slot].setVariant(Math.floor(Math.random() * 4));
-      if (a.bus) this.buses[a.slot].setRoute(1 + Math.floor(Math.random() * 100), Math.random() < 0.25);
+      if (a.bus) this.buses[a.slot].randomise();
       return true;
     }
     return false;

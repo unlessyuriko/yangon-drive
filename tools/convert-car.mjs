@@ -1,10 +1,11 @@
-// Usage: node tools/convert-car.mjs "<car>.obj" "<car>.mtl" public/models/civic-mugen.glb
+// Usage: node tools/convert-car.mjs "<car>.obj" "<car>.mtl" public/models/civic-mugen.glb [full]
+// `full` keeps every triangle (civic-mugen-hq.glb, desktops); without it the model is decimated to about 70k triangles (civic-mugen.glb, phones).
 // Needs (install outside the game: npm i @gltf-transform/core meshoptimizer). Mirrors X to right-hand drive, centres at mid-wheelbase, decimates to about 70k triangles.
 import fs from 'fs';
 import { Document, NodeIO } from '@gltf-transform/core';
 import { MeshoptSimplifier } from 'meshoptimizer';
 
-const [, , objPath, mtlPath, outPath] = process.argv;
+const [, , objPath, mtlPath, outPath, mode] = process.argv, FULL = mode === 'full';
 await MeshoptSimplifier.ready;
 
 // ---- materials ----
@@ -48,7 +49,7 @@ for (const P of prims.values()) {
   tris0 += P.idx.length / 3;
   let idx = new Uint32Array(P.idx), pos = new Float32Array(P.pos), nor = new Float32Array(P.nor);
   const target = Math.max(12, Math.floor((idx.length * ratioFor(P)) / 3) * 3);
-  if (idx.length > 90) { const [s] = MeshoptSimplifier.simplify(idx, pos, 3, target, 0.02, []); idx = s; }
+  if (!FULL && idx.length > 90) { const [s] = MeshoptSimplifier.simplify(idx, pos, 3, target, 0.02, []); idx = s; }
   // compact vertices
   const remap = new Map(), pp = [], nn = [], ii = [];
   for (const i of idx) { let r = remap.get(i); if (r === undefined) { r = pp.length / 3; remap.set(i, r); pp.push(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]); nn.push(nor[i * 3], nor[i * 3 + 1], nor[i * 3 + 2]); } ii.push(r); }
